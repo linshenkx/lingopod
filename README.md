@@ -98,7 +98,7 @@ docker stop lingopod && docker rm lingopod
 ```
 
 
-### 3. 本地环境配置（不推荐）
+### 3. 本地环境配置（建议优先docker）
 
 1. 环境准备：
 ```bash
@@ -192,7 +192,7 @@ lingopod/
 - 🔧 提交代码改进
 
 
-## 📄 开��协议
+## 📄 开源协议
 
 本项目采用 [MIT 许可证](LICENSE) 开源。
 
