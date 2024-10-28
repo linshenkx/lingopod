@@ -1,0 +1,252 @@
+:root {
+    --primary-color: #4A90E2;
+    --secondary-color: #67B0F5;
+    --background-color: #F5F7FA;
+    --text-color: #2C3E50;
+    --card-background: #FFFFFF;
+    --border-color: #E6EAF0;
+    --border-radius: 12px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    padding-bottom: 80px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-bottom: 100px;
+}
+
+/* 卡片样式 */
+.card {
+    background-color: #FFFFFF;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+    border: none;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* 表单元素 */
+.form-control, .btn {
+    border-radius: var(--border-radius);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background-color: #ff3b30;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #ff6b6b;
+    transform: translateY(-1px);
+}
+
+/* 音频列表样式 */
+#audioList .audio-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+}
+
+.audio-item:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+.audio-info {
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.audio-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    text-decoration: none;
+}
+
+.audio-meta {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.btn-delete {
+    margin-left: 0.5rem;
+}
+
+.playlist-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.playlist-item:hover {
+    background-color: #f8f9fa;
+}
+
+.playlist-item.active {
+    background-color: #e9ecef;
+    font-weight: bold;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #0A84FF;
+        --secondary-color: #64D2FF;
+        --background-color: #1C1C1E;
+        --text-color: #FFFFFF;
+        --card-background: #2C2C2E;
+        --border-color: #38383A;
+    }
+
+    .card, .mini-player {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .audio-item {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .audio-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* 在文件末尾添加 */
+#languageBtn, #miniLanguageBtn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#languageBtn:hover, #miniLanguageBtn:hover {
+    background-color: var(--secondary-color);
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    #languageBtn, #miniLanguageBtn {
+        background-color: var(--primary-color);
+    }
+
+    #languageBtn:hover, #miniLanguageBtn:hover {
+        background-color: var(--secondary-color);
+    }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .mini-player {
+    flex-direction: column;
+    padding: 0.5rem;
+  }
+
+  .mini-player-info {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .mini-player-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mini-player-title {
+    font-size: 0.9rem;
+  }
+
+  .mini-player-time {
+    font-size: 0.7rem;
+  }
+
+  .container {
+    padding: 15px;
+    padding-bottom: 120px;  /* 为迷你播放器留出空间 */
+  }
+  
+  .card {
+    margin-bottom: 15px;
+  }
+  
+  .audio-item {
+    padding: 0.8rem;
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* 深色/浅色模式切换按钮 */
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+/* 浅色模式 */
+body.light-mode {
+  --background-color: #F2F2F7;
+  --text-color: #1C1C1E;
+  --card-background: #FFFFFF;
+  --border-color: #E5E5EA;
+  --input-background: #FFFFFF;
+  --input-text-color: #1C1C1E;
+}
+
+/* 深色模式 */
+body.dark-mode {
+  --background-color: #1A202C;  /* 更深邃的背景色 */
+  --text-color: #E2E8F0;       /* 更柔和的文字色 */
+  --card-background: #2D3748;   /* 更专业的卡片背景 */
+  --border-color: #4A5568;      /* 更突出的边框 */
+  --input-background: #2D3748;  /* 匹配卡片背景 */
+  --input-text-color: #E2E8F0;  /* 匹配文字颜色 */
+}
+
+/* 输入框样式 */
+.form-control {
+  background-color: var(--input-background);
+  color: var(--input-text-color);
+  border-color: var(--border-color);
+}
+
+.form-control:focus {
+  background-color: var(--input-background);
+  color: var(--input-text-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}

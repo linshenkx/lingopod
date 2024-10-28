@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>URL-to-播客</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="data:,">  <!-- 添加这行来阻止 favicon 请求 -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/player.css">
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle">🌓</button>
+    <div class="container" id="mainPage">
+        <h1 class="text-center mb-4">LingoPod 译播客</h1>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2>创建新播客</h2>
+                <form id="urlForm">
+                    <div class="mb-3">
+                        <input type="url" id="urlInput" class="form-control" required placeholder="输入URL">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">提交任务</button>
+                </form>
+                <div id="taskInfo" class="mt-4"></div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <input type="text" id="searchInput" class="form-control" placeholder="搜索播客...">
+        </div>
+        <div id="audioList"></div>
+    </div>
+
+    <div class="player-container" id="playerPage" style="display: none;">
+        <div class="player-header">
+            <button id="backBtn" class="btn-back">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+        <div class="player-content">
+            <div class="player-main">
+                <h2 id="playerTitle" class="player-title mb-3">正在播放</h2>
+                
+                <div class="subtitle-container">
+                    <div id="subtitleTextCn" class="subtitle-text"></div>
+                    <div id="subtitleTextEn" class="subtitle-text"></div>
+                </div>
+                
+                <div class="player-controls">
+                    <input type="range" class="player-progress" id="progressBar" min="0" max="100" value="0">
+                    <div class="player-time">
+                        <span id="currentTime">00:00</span>
+                        <span id="duration">00:00</span>
+                    </div>
+                    <div class="player-buttons">
+                        <button class="btn-player" id="prevBtn"><i class="fas fa-step-backward"></i></button>
+                        <button class="btn-player btn-play" id="playPauseBtn"><i class="fas fa-play"></i></button>
+                        <button class="btn-player" id="nextBtn"><i class="fas fa-step-forward"></i></button>
+                        <button class="btn-player" id="speedBtn">1x</button>
+                        <button class="btn-player" id="languageBtn">中文</button>
+                        <button class="btn-player" id="subtitleBtn">字幕: 中英文</button>
+                    </div>
+                </div>
+            </div>
+            <div class="player-playlist" id="playlist"></div>
+        </div>
+    </div>
+
+    <div class="mini-player" id="miniPlayer" style="display: none;">
+        <div class="mini-player-info">
+            <div class="mini-player-title" id="miniPlayerTitle"></div>
+            <div class="mini-player-progress">
+                <input type="range" class="form-range" id="miniProgressBar" min="0" max="100" value="0">
+                <div class="mini-player-time">
+                    <span id="miniCurrentTime">00:00</span>
+                    <span id="miniDuration">00:00</span>
+                </div>
+            </div>
+        </div>
+        <div class="mini-player-controls">
+            <button class="mini-player-btn" id="miniPrevBtn"><i class="fas fa-step-backward"></i></button>
+            <button class="mini-player-btn" id="miniPlayPauseBtn"><i class="fas fa-play"></i></button>
+            <button class="mini-player-btn" id="miniNextBtn"><i class="fas fa-step-forward"></i></button>
+            <button class="mini-player-btn" id="miniSpeedBtn">1x</button>
+            <button class="mini-player-btn" id="miniLanguageBtn">中文</button>
+            <button class="mini-player-btn" id="miniOpenPlayerBtn"><i class="fas fa-expand"></i></button>
+        </div>
+    </div>
+
+    <!-- 在 jQuery 之前添加 Howler.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const API_BASE_URL = '/api';
+            let audioList = [];
+            let currentAudioIndex = -1;
+            let sound = null;
+            let currentLanguage = 'cn'; // 新增：当前语言
+            let subtitles = { cn: [], en: [] }; // 新增：储中英文字幕
+            let currentTaskId = null;
+            let subtitleMode = 'both'; // 'cn', 'en', 'both'
+
+            function fetchAudios() {
+                console.log('Fetching audios...'); // 加日志
+                $.ajax({
+                    url: `${API_BASE_URL}/get_list`,
+                    method: 'GET',
+                    success: function(data) {
+                        console.log('Received audio data:', data); // 添加日志
+                        audioList = data.filter(audio => audio.audioUrlCn || audio.audioUrlEn);
+                        console.log('Filtered audio list:', audioList); // 添加日志
+                        displayAudios(audioList);
+                    },
+                    error: function(error) {
+                        console.error('获取音频列表失败:', error);
+                    }
+                });
+            }
+
+            function displayAudios(audios) {
+                console.log('Displaying audios:', audios); // 添加日志
+                const $audioList = $('#audioList');
+                $audioList.empty();
+
+                if (audios.length === 0) {
+                    console.log('No audios to display'); // 添加日志
+                    $audioList.append('<p>没有可用的音频</p>');
+                    return;
+                }
+
+                audios.forEach((audio, index) => {
+                    if (!audio.audioUrlCn && !audio.audioUrlEn) {
+                        console.log('Skipping audio without URL:', audio); // 添加日志
+                        return;
+                    }
+
+                    const createdAt = new Date(audio.createdAt);
+                    const formattedDate = `${createdAt.getFullYear()}/${(createdAt.getMonth() + 1).toString().padStart(2, '0')}/${createdAt.getDate().toString().padStart(2, '0')} ${createdAt.getHours().toString().padStart(2, '0')}:${createdAt.getMinutes().toString().padStart(2, '0')}:${createdAt.getSeconds().toString().padStart(2, '0')}`;
+
+                    const $audioItem = $('<div>').addClass('audio-item').html(`
+                        <div class="audio-info">
+                            <a href="${audio.url}" target="_blank" class="audio-title">${audio.title || '无标题'}</a>
+                            <div class="audio-meta">
+                                <span class="ml-2">${formattedDate}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-play">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <button class="btn btn-danger btn-delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `);
+
+                    $audioItem.find('.btn-play').on('click', function() {
+                        playAudio(index);
+                        // 点击播放按钮时只显示mini播放器
+                        $('#mainPage').show();
+                        $('#playerPage').hide();
+                        $('#miniPlayer').show();
+                    });
+
+                    $audioItem.find('.btn-delete').on('click', function() {
+                        deleteAudio(audio.taskId);
+                    });
+
+                    $audioList.append($audioItem);
+                });
+
+                console.log('Audio list updated'); // 添加日志
+                handleSearch();
+                updatePlaylist();
+            }
+
+            function playAudio(index, forceReload = false) {
+                console.log('开始播放音频，索引:', index, '强制重载:', forceReload);
+                if (currentAudioIndex === index && sound && !forceReload) {
+                    if (sound.playing()) {
+                        sound.pause();
+                    } else {
+                        sound.play();
+                    }
+                    return;
+                }
+                
+                currentAudioIndex = index;
+                const audio = audioList[index];
+                const audioUrl = currentLanguage === 'cn' ? audio.audioUrlCn : audio.audioUrlEn;
+                
+                if (sound) {
+                    sound.unload();
+                }
+                
+                subtitles = { cn: [], en: [] };
+                $('#subtitleTextCn').text('');
+                $('#subtitleTextEn').text('');
+                
+                // 加载当前语言的字幕
+                if (currentLanguage === 'cn' && audio.subtitleUrlCn) {
+                    loadSubtitles(audio.subtitleUrlCn, 'cn');
+                } else if (currentLanguage === 'en' && audio.subtitleUrlEn) {
+                    loadSubtitles(audio.subtitleUrlEn, 'en');
+                }
+                
+                sound = new Howl({
+                    src: [audioUrl],
+                    html5: true,
+                    format: ['mp3'],
+                    onplay: function() {
+                        console.log('音频开始播放');
+                        startProgressUpdate();
+                        updatePlayerControls();
+                        $('#playPauseBtn i, #miniPlayPauseBtn i')
+                            .removeClass('fa-play')
+                            .addClass('fa-pause');
+                        
+                        const savedSpeed = parseFloat(localStorage.getItem('audioPlaybackSpeed')) || 1;
+                        sound.rate(savedSpeed);
+                        updateSpeed(savedSpeed);
+                    },
+                    onpause: function() {
+                        console.log('音频暂停');
+                        stopProgressUpdate();
+                        $('#playPauseBtn i, #miniPlayPauseBtn i')
+                            .removeClass('fa-pause')
+                            .addClass('fa-play');
+                    },
+                    onend: function() {
+                        stopProgressUpdate();
+                        playNext();
+                    },
+                    onseek: function() {
+                        console.log('音频seek事件触发');
+                        updateProgressBar();
+                    }
+                });
+                
+                sound.on('seek', function() {
+                    updateProgressBar();
+                });
+                
+                sound.play();
+                updatePlaylist();
+                updatePlayerControls();
+                
+                $('#playerTitle').text(audio.title || '无标题');
+                $('#miniPlayerTitle').text(audio.title || '无标题');
+            }
+
+            function deleteAudio(taskId) {
+                $.ajax({
+                    url: `${API_BASE_URL}/delete_task/${taskId}`,
+                    method: 'DELETE',
+                    success: function(response) {
+                        fetchAudios();
+                    },
+                    error: function(error) {
+                        console.error('删除任务失败:', error);
+                        alert('删除任务失败');
+                    }
+                });
+            }
+
+            function updatePlayerControls() {
+                $('#prevBtn').prop('disabled', currentAudioIndex <= 0);
+                $('#nextBtn').prop('disabled', currentAudioIndex >= audioList.length - 1);
+            }
+
+            function togglePlayPause() {
+                if (!sound) return;
+                
+                if (sound.playing()) {
+                    sound.pause();
+                } else {
+                    const currentSeek = sound.seek();
+                    sound.play();
+                    
+                    // 保恢复到正确的位置
+                    if (currentSeek > 0) {
+                        setTimeout(() => {
+                            sound.seek(currentSeek);
+                        }, 100);
+                    }
+                }
+            }
+
+            function playPrevious() {
+                if (currentAudioIndex > 0) {
+                    playAudio(currentAudioIndex - 1);
+                }
+            }
+
+            function playNext() {
+                if (currentAudioIndex < audioList.length - 1) {
+                    playAudio(currentAudioIndex + 1);
+                }
+            }
+
+            function updateProgressBar() {
+                if (!sound) {
+                    console.log('updateProgressBar: sound对象不存在');
+                    return;
+                }
+                
+                const seek = sound.seek() || 0;
+                const duration = sound.duration() || 0;
+                
+                
+                if (duration > 0) {
+                    const progress = (seek / duration) * 100;
+                    $('#progressBar, #miniProgressBar').val(progress);
+                    
+                    const currentTimeText = formatTime(seek);
+                    const durationText = formatTime(duration);
+                    
+                    $('#currentTime, #miniCurrentTime').text(currentTimeText);
+                    $('#duration, #miniDuration').text(durationText);
+                } else {
+                    console.log('音频时长为0，无法更新进度条');
+                }
+                updateSubtitle();
+            }
+
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = Math.floor(seconds % 60);
+                return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }
+
+            function handleSearch() {
+                const searchTerm = $('#searchInput').val().toLowerCase();
+                $('.audio-item').each(function() {
+                    const title = $(this).find('.audio-title').text().toLowerCase();
+                    if (title.includes(searchTerm)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            function updatePlaylist() {
+                const $playlist = $('#playlist');
+                $playlist.empty();
+
+                audioList.forEach((audio, index) => {
+                    const $playlistItem = $('<div>')
+                        .addClass(`playlist-item${index === currentAudioIndex ? ' active' : ''}`)
+                        .text(audio.title || '无标题')
+                        .on('click', function() {
+                            playAudio(index);
+                        });
+                    $playlist.append($playlistItem);
+                });
+            }
+
+            const speedOptions = [0.75, 1, 1.25, 1.5, 1.75, 2];
+            let currentSpeedIndex = speedOptions.indexOf(parseFloat(localStorage.getItem('audioPlaybackSpeed')) || 1);
+            if (currentSpeedIndex === -1) currentSpeedIndex = 1;
+
+            function updateSpeed(speed) {
+                if (sound) {
+                    sound.rate(speed);
+                }
+                // 同时更新两个界面的速度按钮文本
+                $('#speedBtn, #miniSpeedBtn').text(speed + 'x');
+                localStorage.setItem('audioPlaybackSpeed', speed);
+            }
+
+            function loadSubtitles(subtitleUrl, lang) {
+                console.log(`开始加载${lang}字幕:`, subtitleUrl);
+                $.ajax({
+                    url: subtitleUrl,
+                    dataType: 'text',
+                    success: function(data) {
+                        subtitles[lang] = parseSRT(data);
+                        console.log(`${lang}字幕加载完成:`, subtitles[lang].length, '条');
+                        // 添加一些字幕内容的日志
+                        if (subtitles[lang].length > 0) {
+                            console.log('第一条字幕:', subtitles[lang][0]);
+                            console.log('最后一条字幕:', subtitles[lang][subtitles[lang].length - 1]);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error(`加载${lang}字幕失败:`, textStatus, errorThrown);
+                    }
+                });
+            }
+            
+            function parseSRT(srtContent) {
+                srtContent = srtContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const blocks = srtContent.split('\n\n');
+                const subtitles = [];
+                
+                blocks.forEach(block => {
+                    if (!block.trim()) return;
+                    
+                    const lines = block.split('\n');
+                    if (lines.length < 4) return; // 确保至少索引、时间码、中文和英文
+                    
+                    const timecode = lines[1].trim().split(' --> ');
+                    if (timecode.length !== 2) return;
+                    
+                    try {
+                        const startTime = timeToSeconds(timecode[0]);
+                        const endTime = timeToSeconds(timecode[1]);
+                        
+                        const chineseText = lines[2].trim();
+                        const englishText = lines[3].trim();
+                        
+                        subtitles.push({
+                            index: parseInt(lines[0]),
+                            start: startTime,
+                            end: endTime,
+                            textCn: chineseText,
+                            textEn: englishText
+                        });
+                    } catch (e) {
+                        console.error('解析字幕块时出错:', e);
+                        console.log('问题字幕块:', block);
+                    }
+                });
+                
+                return subtitles;
+            }
+            
+            function timeToSeconds(timeStr) {
+                const [time, milliseconds] = timeStr.split(',');
+                const [hours, minutes, seconds] = time.split(':');
+                
+                return (
+                    parseInt(hours) * 3600 +
+                    parseInt(minutes) * 60 +
+                    parseInt(seconds) +
+                    parseInt(milliseconds) / 1000
+                );
+            }
+            
+            let lastSubtitle = null;
+
+            function updateSubtitle(forceUpdate = false) {
+                if (!sound) {
+                    return;
+                }
+                
+                const currentTime = sound.seek();
+                if (subtitles[currentLanguage].length === 0) {
+                    return;
+                }
+                
+                const currentSubtitle = subtitles[currentLanguage].find(sub => 
+                    currentTime >= sub.start && currentTime <= sub.end
+                );
+                
+                // 当字幕内容发生变化或强制更新时才更新显示
+                if (currentSubtitle !== lastSubtitle || forceUpdate) {
+                    lastSubtitle = currentSubtitle;
+                    
+                    if (currentSubtitle) {
+                        console.log('字幕更新:', currentSubtitle);
+                        
+                        switch(subtitleMode) {
+                            case 'cn':
+                                $('#subtitleTextCn').text(currentSubtitle.textCn).show();
+                                $('#subtitleTextEn').hide();
+                                break;
+                            case 'en':
+                                $('#subtitleTextCn').hide();
+                                $('#subtitleTextEn').text(currentSubtitle.textEn).show();
+                                break;
+                            case 'both':
+                                $('#subtitleTextCn').text(currentSubtitle.textCn).show();
+                                $('#subtitleTextEn').text(currentSubtitle.textEn).show();
+                                break;
+                        }
+                    } else {
+                        console.log('当前无匹配字幕');
+                        $('#subtitleTextCn, #subtitleTextEn').text('');
+                    }
+                }
+            }
+
+            // 修改语言切换函数
+            function toggleLanguage() {
+                currentLanguage = currentLanguage === 'cn' ? 'en' : 'cn';
+                const languageText = currentLanguage === 'cn' ? '中文' : 'English';
+                $('#languageBtn, #miniLanguageBtn').text(languageText);
+                
+                console.log('切换语言到:', currentLanguage);
+                
+                if (currentAudioIndex !== -1) {
+                    const audio = audioList[currentAudioIndex];
+                    const subtitleUrl = currentLanguage === 'cn' ? audio.subtitleUrlCn : audio.subtitleUrlEn;
+                    
+                    console.log('当前音频字幕URL:', subtitleUrl);
+                    
+                    if (subtitleUrl) {
+                        loadSubtitles(subtitleUrl, currentLanguage);
+                    } else {
+                        console.warn('当前语言没有可用的字幕URL');
+                    }
+                    
+                    // 强制更新字幕显示
+                    updateSubtitle(true);
+                    
+                    playAudio(currentAudioIndex, true);
+                }
+            }
+
+            fetchAudios();
+
+            $('#urlForm').on('submit', function(e) {
+                e.preventDefault();
+                const url = $('#urlInput').val();
+                
+                console.log('提交新任务:', url); // 调试日志
+                
+                $('#urlInput').val('');
+                $('#taskInfo').empty();
+                
+                if (currentTaskId) {
+                    console.log('取消之前的任务:', currentTaskId); // 调试日志
+                    clearTimeout(window[`pollTimeout_${currentTaskId}`]);
+                }
+                
+                $.ajax({
+                    url: `${API_BASE_URL}/post_task`,
+                    method: 'POST',
+                    data: JSON.stringify({ url: url }),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        const taskId = response.taskId;
+                        currentTaskId = taskId;
+                        console.log('新任务ID:', taskId); // 调试日志
+                        
+                        $('#taskInfo').html(`
+                            <div class="alert alert-info" id="task-${taskId}">
+                                <div class="d-flex align-items-center">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                                        <span class="visually-hidden">处理中...</span>
+                                    </div>
+                                    <div>任务正在处理中...</div>
+                                </div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        `);
+                        
+                        pollTaskStatus(taskId);
+                    },
+                    error: function(error) {
+                        console.error('提交任务失败:', error);
+                        $('#taskInfo').html(`
+                            <div class="alert alert-danger">
+                                提交任务失败，请重试
+                            </div>
+                        `);
+                    }
+                });
+            });
+
+            function pollTaskStatus(taskId) {
+                console.log('开始轮询任务状态:', taskId); // 调试日志
+                
+                const checkStatus = () => {
+                    $.ajax({
+                        url: `${API_BASE_URL}/get_task?taskId=${taskId}`,
+                        method: 'GET',
+                        success: function(task) {
+                            console.log('获取任务状态:', taskId, task.status); // 调试日志
+                            
+                            updateTaskInfo(task, taskId);
+                            
+                            if (task.status === 'completed') {
+                                fetchAudios();
+                                setTimeout(() => {
+                                    $(`#task-${taskId}`).fadeOut(500, function() {
+                                        $(this).remove();
+                                    });
+                                }, 3000);
+                            } else if (task.status === 'failed') {
+                                setTimeout(() => {
+                                    $(`#task-${taskId}`).fadeOut(500, function() {
+                                        $(this).remove();
+                                    });
+                                }, 5000);
+                            } else {
+                                window[`pollTimeout_${taskId}`] = setTimeout(checkStatus, 2000);
+                            }
+                        },
+                        error: function(error) {
+                            console.error('获取务状态失败:', taskId, error);
+                            $(`#task-${taskId}`).html(`
+                                <div class="alert alert-danger">
+                                    获取任务状态失败
+                                </div>
+                            `);
+                        }
+                    });
+                };
+                
+                checkStatus();
+            }
+
+            function updateTaskInfo(task, taskId) {
+                console.log('更新任务信息:', taskId, task.status); // 调试日志
+                
+                let alertClass = 'alert-info';
+                let icon = 'spinner-border spinner-border-sm';
+                let message = task.progress || '处理中...';
+                
+                if (task.status === 'completed') {
+                    alertClass = 'alert-success';
+                    icon = 'fas fa-check';
+                    message = '任务已完成';
+                } else if (task.status === 'failed') {
+                    alertClass = 'alert-danger';
+                    icon = 'fas fa-times';
+                    message = task.progress || '任务失败';
+                }
+                
+                $(`#task-${taskId}`).html(`
+                    <div class="d-flex align-items-center">
+                        <div class="me-2">
+                            <i class="${icon}"></i>
+                        </div>
+                        <div>${message}</div>
+                    </div>
+                    ${task.status === 'processing' ? `
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 100%"></div>
+                        </div>
+                    ` : ''}
+                `).removeClass('alert-info alert-success alert-danger').addClass(alertClass);
+            }
+
+            $('#playPauseBtn, #miniPlayPauseBtn').on('click', togglePlayPause);
+            $('#prevBtn').on('click', playPrevious);
+            $('#nextBtn, #miniNextBtn').on('click', playNext);
+            $('#audioPlayer').on('timeupdate', updateProgressBar);
+            $('#audioPlayer').on('ended', playNext);
+            $('#searchInput').on('input', handleSearch);
+            $('#backBtn').on('click', function() {
+                $('#playerPage').hide();
+                $('#mainPage').show();
+                $('#miniPlayer').show();
+            });
+
+            // 修改进度条相关代码
+            let userSeekValue = 0;
+
+            $('#progressBar, #miniProgressBar').on('input', function(e) {
+                if (!sound) return;
+                userSeekValue = this.value;
+                const seekPosition = (userSeekValue / 100) * sound.duration();
+                $('#currentTime, #miniCurrentTime').text(formatTime(seekPosition));
+            });
+
+            $('#progressBar, #miniProgressBar').on('mouseup touchend', function(e) {
+                if (!sound) return;
+                const seekPosition = (userSeekValue / 100) * sound.duration();
+                sound.seek(seekPosition);
+                if (!sound.playing()) {
+                    sound.play();
+                }
+                updateProgressBar();
+            });
+
+            // 添加鼠标按事件处理
+            // $('#progressBar').on('mousedown touchstart', function() {
+            //     if (!sound) return;
+            //     sound.pause();
+            // });
+
+            // 添加鼠标释放事件处理
+            // $('#progressBar').on('mouseup touchend', function() {
+            //     if (!sound) return;
+            //     sound.play();
+            // });
+
+            $('#speedBtn').on('click', function() {
+                currentSpeedIndex = (currentSpeedIndex + 1) % speedOptions.length;
+                const newSpeed = speedOptions[currentSpeedIndex];
+                updateSpeed(newSpeed);
+            });
+
+            $('#audioPlayer').on('loadedmetadata', function() {
+                updateProgressBar();
+            });
+
+            // 添加这些新函数
+            let progressInterval;
+
+            function startProgressUpdate() {
+                stopProgressUpdate(); // 先清除可能存在的旧计时器
+                progressInterval = setInterval(() => {
+                    updateProgressBar();
+                    updateSubtitle();
+                }, 200); // 降低更新频率到200毫秒
+            }
+
+            function stopProgressUpdate() {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+            }
+
+            // 添加新的事件监听器
+            $('#miniOpenPlayerBtn').on('click', function() {
+                $('#mainPage').hide();
+                $('#playerPage').show();
+                $('#miniPlayer').hide();
+            });
+
+            // 为 mini-player 的进度添加事件处理
+            $('#miniProgressBar').on('input', function(e) {
+                if (!sound) return;
+                
+                const seekPosition = (this.value / 100) * sound.duration();
+                $('#miniCurrentTime').text(formatTime(seekPosition));
+            });
+
+            $('#miniProgressBar').on('change', function(e) {
+                if (!sound) return;
+                
+                const seekPosition = (this.value / 100) * sound.duration();
+                
+                // 保存当前是否正在播放的状态
+                const wasPlaying = sound.playing();
+                
+                // 暂停当前放
+                sound.pause();
+                
+                // 尝试 seek
+                sound.seek(seekPosition);
+                
+                // 如果之前是在播放状态，则恢复播放
+                if (wasPlaying) {
+                    setTimeout(() => {
+                        sound.play();
+                    }, 100);
+                }
+            });
+
+            // 添加鼠标按下释放事件处理
+            // $('#miniProgressBar').on('mousedown touchstart', function() {
+            //     if (!sound) return;
+            //     sound.pause();
+            // });
+
+            // $('#miniProgressBar').on('mouseup touchend', function() {
+            //     if (!sound) return;
+            //     sound.play();
+            // });
+
+            // 优化进度更新函数
+            function updateProgressBar() {
+                if (!sound) {
+                    console.log('updateProgressBar: sound对象不存在');
+                    return;
+                }
+                
+                const seek = sound.seek() || 0;
+                const duration = sound.duration() || 0;
+                
+                
+                if (duration > 0) {
+                    const progress = (seek / duration) * 100;
+                    $('#progressBar, #miniProgressBar').val(progress);
+                    
+                    const currentTimeText = formatTime(seek);
+                    const durationText = formatTime(duration);
+                    
+                    $('#currentTime, #miniCurrentTime').text(currentTimeText);
+                    $('#duration, #miniDuration').text(durationText);
+                } else {
+                    console.log('音频时长为0，无法更新进度条');
+                }
+                updateSubtitle();
+            }
+
+            // 确保在切换播放时更新所有控件状态
+            function updatePlayPauseButtons() {
+                const isPlaying = sound && sound.playing();
+                const iconClass = isPlaying ? 'fa-pause' : 'fa-play';
+                
+                $('#playPauseBtn i, #miniPlayPauseBtn i')
+                    .removeClass('fa-play fa-pause')
+                    .addClass(iconClass);
+            }
+
+            // 修改播放/暂停函数
+            function togglePlayPause() {
+                if (!sound) return;
+                
+                if (sound.playing()) {
+                    sound.pause();
+                } else {
+                    sound.play();
+                }
+                
+                updatePlayPauseButtons();
+            }
+
+            // 添加开始播放函数
+            function startPlayback() {
+                sound.play();
+                updatePlaylist();
+            }
+
+            // 为两个速度按钮添加点击事件
+            $('#speedBtn, #miniSpeedBtn').on('click', function() {
+                currentSpeedIndex = (currentSpeedIndex + 1) % speedOptions.length;
+                const newSpeed = speedOptions[currentSpeedIndex];
+                updateSpeed(newSpeed);
+            });
+
+            // 初始化速度按钮显示
+            const initialSpeed = parseFloat(localStorage.getItem('audioPlaybackSpeed')) || 1;
+            $('#speedBtn, #miniSpeedBtn').text(initialSpeed + 'x');
+
+            $('#languageBtn, #miniLanguageBtn').on('click', toggleLanguage);
+
+            // 修改字幕模式切换的处理
+            $('#subtitleBtn').on('click', function() {
+                switch(subtitleMode) {
+                    case 'both':
+                        subtitleMode = 'cn';
+                        $(this).text('字幕: 中文');
+                        break;
+                    case 'cn':
+                        subtitleMode = 'en';
+                        $(this).text('字幕: 英文');
+                        break;
+                    case 'en':
+                        subtitleMode = 'both';
+                        $(this).text('字幕: 中英文');
+                        break;
+                }
+                // 强制更新字幕显示
+                updateSubtitle(true);
+            });
+
+            // 在 $(document).ready() 函数的最后添加：
+            console.log('Document ready, initializing...');
+
+            // 主题切换功能
+            const themeToggle = $('#themeToggle');
+            const body = $('body');
+
+            // 检查本地存储中的主题设置
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme) {
+                body.addClass(currentTheme);
+            }
+
+            themeToggle.on('click', function() {
+                if (body.hasClass('light-mode')) {
+                    body.removeClass('light-mode').addClass('dark-mode');
+                    localStorage.setItem('theme', 'dark-mode');
+                } else {
+                    body.removeClass('dark-mode').addClass('light-mode');
+                    localStorage.setItem('theme', 'light-mode');
+                }
+            });
+
+            // 根据系统主题设置初始主题
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                body.addClass('dark-mode');
+                localStorage.setItem('theme', 'dark-mode');
+            } else {
+                body.addClass('light-mode');
+                localStorage.setItem('theme', 'light-mode');
+            }
+        });
+    </script>
+</body>
+</html>

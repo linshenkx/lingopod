@@ -1,0 +1,323 @@
+/* 播放器容器 */
+.player-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--background-color);
+    color: var(--text-color);
+    z-index: 1000;
+    overflow-y: auto;
+    backdrop-filter: blur(10px);  /* 添加毛玻璃效果 */
+}
+
+/* 头部样式 */
+.player-header {
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+}
+
+/* 返回按钮样式 */
+.btn-back {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+}
+
+/* 内容区域样式 */
+.player-content {
+    padding: 1rem;
+    height: calc(100% - 60px);
+    display: flex;
+    flex-direction: column;
+}
+
+/* 主要区域样式 */
+.player-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* 标题样式 */
+.player-title {
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* 控制区域样式 */
+.player-controls {
+    padding: 1rem;
+}
+
+/* 进度条样式 */
+.player-progress {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+/* 时间样式 */
+.player-time {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+/* 按钮区域样式 */
+.player-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+/* 播放按钮样式 */
+.btn-player {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.btn-player:hover {
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+}
+
+/* 迷你播放器 */
+.mini-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--card-background);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border-color);
+    padding: 0.8rem 1.2rem;
+    z-index: 900;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 字幕样式 */
+.subtitle-container {
+    margin-top: 20px;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--card-background);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 字幕文本样式 */
+.subtitle-text {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    padding: 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#subtitleTextCn {
+    margin-bottom: 10px;
+}
+
+#subtitleTextEn {
+    font-style: italic;
+}
+
+/* 激活字样式 */
+.subtitle-active {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .player-content {
+        flex-direction: column;
+    }
+
+    .player-main {
+        padding: 1rem;
+    }
+
+    .player-playlist {
+        width: 100%;
+        height: 200px;
+        border-left: none;
+        border-top: 1px solid #eee;
+    }
+
+    .player-buttons {
+        gap: 0.5rem;
+    }
+
+    .btn-player {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    .subtitle-text {
+        font-size: 16px;
+    }
+}
+
+.mini-player-info {
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.mini-player-title {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-player-progress {
+    width: 100%;
+}
+
+.mini-player-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.mini-player-controls {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.mini-player-btn {
+    background: none;
+    border: none;
+    padding: 0.3rem;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--text-color);
+    transition: color 0.3s ease;
+}
+
+.mini-player-btn:hover {
+    color: var(--primary-color);
+}
+
+.form-range {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+}
+
+/* 为语言按钮添加特殊样式 */
+#languageBtn {
+    font-size: 1rem;
+    padding: 0.3rem 0.6rem;
+}
+
+/* 为迷你播放器的语言按钮添加特殊样式 */
+#miniLanguageBtn {
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+}
+
+/* 添加深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .player-container, .mini-player {
+        background-color: var(--background-color);
+        color: var(--text-color);
+    }
+
+    .btn-player, .mini-player-btn {
+        color: var(--text-color);
+    }
+
+    .btn-player:hover, .mini-player-btn:hover {
+        color: var(--primary-color);
+    }
+
+    .subtitle-active {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .subtitle-text {
+        background-color: var(--card-background);
+    }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .mini-player {
+    padding: 0.5rem;
+    flex-direction: column;
+  }
+
+  .mini-player-info {
+    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+
+  .mini-player-title {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mini-player-time {
+    font-size: 0.7rem;
+  }
+
+  .mini-player-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mini-player-btn {
+    padding: 0.2rem;
+    font-size: 0.9rem;
+  }
+
+  .subtitle-container {
+    margin-top: 10px;
+  }
+
+  .subtitle-text {
+    font-size: 14px;
+    padding: 5px;
+  }
+}
+
+.mini-player-btn {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    padding: 0.4rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.mini-player-btn:hover {
+    background: var(--border-color);
+    transform: scale(1.1);
+}

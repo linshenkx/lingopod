@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+.pytest_cache
+.coverage
+htmlcov/
+.env
+.venv
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 项目特定
+data/
+docs/
+*.db
+*.log
+*.mp3
+*.wav
+
+# Docker
+Dockerfile
+.dockerignore
+
+# 文档
+README*
+LICENSE
+*.md
+
+# 开发工具配置
+.editorconfig
+.pre-commit-config.yaml
