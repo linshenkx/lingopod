@@ -6,8 +6,8 @@
 
 驱动工具，专注于将网页内容智能转换为双语播客。它不仅能自动生成引人入胜的中英文音频内容，还提供精准的双语字幕，为内容创作者和语言学习者提供了一站式的学习解决方案。
 
-![首页](https://raw.githubusercontent.com/linshenkx/lingopod/main/docs/images/arch.png)
-![播放界面](https://raw.githubusercontent.com/linshenkx/lingopod/main/docs/images/ui.png)
+![首页](https://raw.githubusercontent.com/linshenkx/lingopod/main/docs/images/main.png)
+![播放界面](https://raw.githubusercontent.com/linshenkx/lingopod/main/docs/images/player.png)
 
 ## ✨ 核心特性
 
