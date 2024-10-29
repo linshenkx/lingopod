@@ -41,9 +41,17 @@ body {
     border-radius: var(--border-radius);
 }
 
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
 .btn-primary {
     background-color: var(--primary-color);
-    border: none;
+    color: white;
 }
 
 .btn-primary:hover {
@@ -52,13 +60,30 @@ body {
 }
 
 .btn-danger {
-    background-color: #ff3b30;
-    border: none;
+    background-color: #dc3545;
+    color: white;
 }
 
 .btn-danger:hover {
-    background-color: #ff6b6b;
+    background-color: #c82333;
     transform: translateY(-1px);
+}
+
+/* 播放按钮样式 */
+.btn-play {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-play:hover {
+    background-color: var(--secondary-color);
+    transform: scale(1.05);
 }
 
 /* 音频列表样式 */
@@ -207,14 +232,37 @@ body {
 
 /* 深色/浅色模式切换按钮 */
 .theme-toggle {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  z-index: 1001;
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 1001;
+    color: var(--text-color);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+    color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+body.dark-mode .theme-toggle {
+    color: var(--text-color);
+}
+
+body.dark-mode .theme-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--primary-color);
 }
 
 /* 浅色模式 */
@@ -249,4 +297,19 @@ body.dark-mode {
   color: var(--input-text-color);
   border-color: var(--primary-color);
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* 深色模式按钮样式 */
+body.dark-mode .btn-player {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .btn-player:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+body.dark-mode .mini-player-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }

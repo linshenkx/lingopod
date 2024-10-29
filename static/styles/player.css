@@ -76,25 +76,25 @@
 .player-buttons {
     display: flex;
     justify-content: center;
+    align-items: center;
     gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 1rem;
 }
 
 /* 播放按钮样式 */
 .btn-player {
-    background-color: var(--card-background);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    font-size: 1rem;
     padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background-color: var(--card-background);
     color: var(--text-color);
-    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .btn-player:hover {
     background-color: var(--primary-color);
-    color: #FFFFFF;
+    color: white;
+    transform: translateY(-1px);
 }
 
 /* 迷你播放器 */
@@ -213,15 +213,33 @@
 .mini-player-btn {
     background: none;
     border: none;
-    padding: 0.3rem;
+    padding: 0.5rem;
     cursor: pointer;
-    font-size: 1rem;
     color: var(--text-color);
-    transition: color 0.3s ease;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .mini-player-btn:hover {
     color: var(--primary-color);
+    background-color: rgba(74, 144, 226, 0.1);
+    transform: scale(1.05);
+}
+
+body.dark-mode .mini-player-btn {
+    color: var(--text-color);
+}
+
+body.dark-mode .mini-player-btn:hover {
+    color: var(--primary-color);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .form-range {

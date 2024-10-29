@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>URL-to-播客</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>LingoPod</title>
+    <link href="lib/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="lib/css/all.min.css" rel="stylesheet">
     <link rel="icon" href="data:,">  <!-- 添加这行来阻止 favicon 请求 -->
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/player.css">
@@ -88,9 +88,9 @@
         </div>
     </div>
 
-    <!-- 在 jQuery 之前添加 Howler.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- 在底部 -->
+    <script src="lib/js/howler.min.js"></script>
+    <script src="lib/js/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
             const API_BASE_URL = '/api';
@@ -827,7 +827,7 @@
 
             $('#languageBtn, #miniLanguageBtn').on('click', toggleLanguage);
 
-            // 修改字幕模式切换的处理
+            // 修改字幕模式��换的处理
             $('#subtitleBtn').on('click', function() {
                 switch(subtitleMode) {
                     case 'both':
@@ -854,7 +854,7 @@
             const themeToggle = $('#themeToggle');
             const body = $('body');
 
-            // 检查本地存储中的主题设置
+            // 检查本地存储中���主题设置
             const currentTheme = localStorage.getItem('theme');
             if (currentTheme) {
                 body.addClass(currentTheme);
