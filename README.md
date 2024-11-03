@@ -6,8 +6,16 @@
 
 驱动工具，专注于将网页内容智能转换为双语播客。它不仅能自动生成引人入胜的中英文音频内容，还提供精准的双语字幕，为内容创作者和语言学习者提供了一站式的学习解决方案。
 
-![首页](https://raw.githubusercontent.com/linshenkx/lingopod/main/docs/images/main.png)
-![播放界面](https://raw.githubusercontent.com/linshenkx/lingopod/main/docs/images/player.png)
+本项目包含:
+- 服务端核心功能和简易Web界面
+- [跨平台客户端应用](https://github.com/linshenkx/lingopod-client) (可选，支持Android/Web/Windows)
+
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/linshenkx/lingopod-client/main/docs/images/home-dark.png" width="45%" alt="主页深色模式"/>
+  <img src="https://raw.githubusercontent.com/linshenkx/lingopod-client/main/docs/images/player-dark.png" width="45%" alt="播放器深色模式"/>
+</div>
+
 
 ## ✨ 核心特性
 
@@ -18,15 +26,21 @@
 - 🔄 支持中英文音频切换
 - 🎵 智能音频合成与处理
 - 🚀 RESTful API 支持
-- 🎯 用户友好的 Web 界面
+- 🎯 内置简易Web界面
+- 📱 支持跨平台客户端应用
 
 ## 🛠️ 技术栈
 
+### 服务端
 - **后端**: Python 3.11, FastAPI, SQLAlchemy
-- **前端**: HTML5, JavaScript
+- **内置前端**: HTML5, JavaScript
 - **AI**: LangChain, OpenAI API
 - **数据库**: SQLite
 - **部署**: Docker
+
+### 客户端 (可选)
+- **框架**: Flutter 3.5.4+
+- **平台**: Android/Web/Windows
 
 ## 🚀 安装与部署
 
@@ -195,4 +209,9 @@ lingopod/
 ## 📄 开源协议
 
 本项目采用 [MIT 许可证](LICENSE) 开源。
+
+
+## 🔗 相关项目
+
+- [LingoPod 客户端](https://github.com/linshenkx/lingopod-client) - 跨平台客户端应用
 
