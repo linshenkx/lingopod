@@ -22,6 +22,8 @@ from app import models
 from app.config import CONFIG
 import yaml
 
+from app.tts_handle import generate_speech
+
 # 初始化OpenAI客户端（用于TTS）
 tts_client = OpenAI(base_url=CONFIG['TTS_BASE_URL'], api_key=CONFIG['TTS_API_KEY'])
 
@@ -226,13 +228,27 @@ class TaskProcessor:
             self.update_progress(step_index, progress, f"正在合成第 {i+1}/{total_dialogues} 条对话")
             
             anchor_type = CONFIG['ANCHOR_TYPE_MAP'].get(item['role']+f"_{lang}", CONFIG['ANCHOR_TYPE_MAP']['default'])
-            audio_content = tts_request(item['content'], anchor_type)
-            if audio_content is None:
-                raise Exception(f"第 {i+1} 条{lang}对话音频生成失败")
             
-            audio_file = os.path.join(self.temp_dir, f"{i:04d}_{lang}_{item['role']}.mp3")
-            with open(audio_file, 'wb') as f:
-                f.write(audio_content)
+            if CONFIG['USE_OPENAI_TTS_MODEL']:
+                # 使用 OpenAI TTS
+                audio_content = tts_request(item['content'], anchor_type)
+                if audio_content is None:
+                    raise Exception(f"第 {i+1} 条{lang}对话音频生成失败")
+                
+                audio_file = os.path.join(self.temp_dir, f"{i:04d}_{lang}_{item['role']}.mp3")
+                with open(audio_file, 'wb') as f:
+                    f.write(audio_content)
+            else:
+                # 使用微软 TTS
+                audio_file = generate_speech(item['content'], anchor_type)
+                if not audio_file or not os.path.exists(audio_file):
+                    raise Exception(f"第 {i+1} 条{lang}对话音频生成失败")
+                
+                # 将临时文件移动到任务目录
+                final_audio_file = os.path.join(self.temp_dir, f"{i:04d}_{lang}_{item['role']}.mp3")
+                shutil.move(audio_file, final_audio_file)
+                audio_file = final_audio_file
+                
             audio_files.append(audio_file)
         
         self.update_progress(step_index, 100, f"{lang}语音合成完成")

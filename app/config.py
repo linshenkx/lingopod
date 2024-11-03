@@ -21,5 +21,6 @@ CONFIG = {
     'DB_PATH': get_env_var('DB_PATH', './data/tasks.db'),
     'PORT': int(get_env_var('PORT', '28811')),  
     'HOST': get_env_var('HOST', '0.0.0.0'),
-    'STATIC_DIR': 'static' 
+    'STATIC_DIR': 'static',
+    'USE_OPENAI_TTS_MODEL': get_env_var('USE_OPENAI_TTS_MODEL', 'false').lower() == 'true'
 }
