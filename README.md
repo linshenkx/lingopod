@@ -12,8 +12,8 @@
 
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/linshenkx/lingopod-client/main/docs/images/home-dark.png" width="45%" alt="主页深色模式"/>
-  <img src="https://raw.githubusercontent.com/linshenkx/lingopod-client/main/docs/images/player-dark.png" width="45%" alt="播放器深色模式"/>
+  <img src="https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/home-dark.png" width="45%" alt="主页深色模式"/>
+  <img src="https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/player-dark.png" width="45%" alt="播放器深色模式"/>
 </div>
 
 
