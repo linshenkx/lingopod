@@ -14,14 +14,17 @@ git clone https://github.com/linshenkx/lingopod.git
 cd lingopod
 ```
 
-### 2. 安装开发依赖
+### 2. 安装 Poetry 和项目依赖
 
 ```bash
-# 安装依赖管理工具
-pip install pip-tools
+# 安装 poetry
+pip install poetry
+
+# 配置 poetry 使用当前 conda 环境（可选）
+poetry config virtualenvs.create false
 
 # 安装项目依赖
-pip-sync
+poetry install
 ```
 
 ### 3. 配置开发环境变量
@@ -29,48 +32,62 @@ pip-sync
 
 ## 📦 依赖管理
 
-项目使用 pip-tools 进行依赖管理，确保环境的一致性和可重现性。
+项目使用 Poetry 进行依赖管理，确保环境的一致性和可重现性。
 
-### 依赖更新流程
+### 依赖管理常用命令
 
-1. **更新依赖**
+1. **安装依赖**
    ```bash
-   # 更新 requirements.txt
-   pip-compile requirements.in --upgrade
+   # 安装所有依赖
+   poetry install
    
-   # 同步环境依赖
-   pip-sync
+   # 仅安装生产环境依赖
+   poetry install --no-dev
    ```
 
 2. **添加新依赖**
    ```bash
-   # 编辑 requirements.in 添加新依赖
-   echo "new-package==1.0.0" >> requirements.in
+   # 添加生产依赖
+   poetry add package-name
    
-   # 重新生成 requirements.txt
-   pip-compile requirements.in
+   # 添加开发依赖
+   poetry add --dev package-name
+   ```
+
+3. **更新依赖**
+   ```bash
+   # 更新所有依赖
+   poetry update
    
-   # 同步环境
-   pip-sync
+   # 更新指定依赖
+   poetry update package-name
+   ```
+
+4. **移除依赖**
+   ```bash
+   poetry remove package-name
    ```
 
 > 💡 **说明**:
-> - `requirements.in`: 主要依赖配置文件
-> - `requirements.txt`: 由 pip-compile 自动生成的完整依赖清单
-> - 新增依赖请修改 `requirements.in` 文件，而不是直接修改 `requirements.txt`
-
+> - `pyproject.toml`: 项目依赖配置文件
+> - `poetry.lock`: 依赖版本锁定文件
+> - 所有依赖管理都通过 poetry 命令进行，不要手动修改 lock 文件
 
 ## 🏗️ 构建与部署
 
 ### 本地开发运行
 ```bash
 # 启动开发服务器
-python main.py
+poetry run python server/main.py
 ```
+
 ### Docker 构建
 ```bash
 # 构建镜像
 docker build -t linshen/lingopod:latest .
+docker tag linshen/lingopod:latest linshen/lingopod:2.0
+docker push linshen/lingopod:2.0
+docker push linshen/lingopod:latest
 
 ```
 

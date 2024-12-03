@@ -1,4 +1,4 @@
-# 使用多阶段构建
+# Python构建环境
 FROM python:3.11-slim as builder
 
 # 设置工作目录
@@ -7,30 +7,30 @@ WORKDIR /build
 # 安装构建依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 chsrc 工具
-RUN wget https://gitee.com/RubyMetric/chsrc/releases/download/pre/chsrc-x64-linux -O chsrc \
-    && chmod +x ./chsrc
-
-# 复制依赖文件
-COPY requirements.txt .
+RUN curl https://chsrc.run/posix | bash
 
 # 配置镜像源
-RUN ./chsrc set debian first && ./chsrc set python first
+RUN chsrc set debian && chsrc set python
 
-# 安装依赖到虚拟环境
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir -r requirements.txt
+# 安装 Poetry
+RUN pip install poetry && poetry config virtualenvs.create false
 
-# 最终镜像
+# 复制项目依赖文件
+COPY pyproject.toml poetry.lock ./
+
+# 安装依赖
+RUN poetry install --no-dev --no-root
+
+# 最终阶段
 FROM python:3.11-slim
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PYTHONDONTWRITEBYTECODE=1
 
 # 设置工作目录
 WORKDIR /opt/lingopod
@@ -40,16 +40,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# 从 builder 阶段复制虚拟环境
-COPY --from=builder /opt/venv /opt/venv
+# 从 builder 阶段复制 Python 包
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 # 复制应用文件
-COPY app ./app
-COPY main.py ./
-COPY static ./static
+COPY server ./server
 
 # 暴露端口
 EXPOSE 28811
 
 # 运行应用
-CMD ["python", "main.py"]
+CMD ["python", "server/main.py"]

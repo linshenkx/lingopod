@@ -10,3 +10,15 @@ langchain-openai
 langchain-core
 pyyaml
 edge_tts
+pytest
+httpx
+pytest-asyncio
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic[email]
+python-multipart
+bcrypt==4.0.1
+alembic
+tenacity
+loguru

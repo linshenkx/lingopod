@@ -67,6 +67,7 @@ TTS_BASE_URL=your_tts_base_url
 TTS_API_KEY=your_tts_api_key
 TTS_MODEL=your_tts_model
 ```
+可以参考[edge-tts-openai-cf-worker](https://github.com/linshenkx/edge-tts-openai-cf-worker)部署基于cloudflare workers的OpenAI TTS服务
 
 ### 2. 核心服务部署
 
@@ -89,7 +90,7 @@ docker run -d \
   -e API_KEY=your_api_key \
   -e MODEL=your_model \
   -e HTTPS_PROXY="http://your-proxy:port" \
-  linshen/lingopod:latest
+  linshen/lingopod:2.0
 ```
 
 #### OpenAI TTS 模式
@@ -100,17 +101,19 @@ docker run -d \
   -p 28811:28811 \
   -v /path/to/lingopod/data:/opt/lingopod/data \
   -e PORT=28811 \
-  -e API_BASE_URL=your_api_base_url \
-  -e API_KEY=your_api_key \
-  -e MODEL=your_model \
+  -e API_BASE_URL=https://openai.example.com/v1 \
+  -e API_KEY=abc \
+  -e MODEL=Qwen/Qwen2.5-7B-Instruct \
   -e USE_OPENAI_TTS_MODEL=true \
-  -e TTS_BASE_URL=your_tts_base_url \
-  -e TTS_API_KEY=your_tts_api_key \
-  -e TTS_MODEL=your_tts_model \
-  linshen/lingopod:latest
+  -e TTS_BASE_URL=https://tts.example.com/v1 \
+  -e TTS_API_KEY=abc \
+  -e TTS_MODEL=tts-1 \
+  linshen/lingopod:2.0
 ```
 
-访问服务： http://localhost:28811 
+访问服务：
+- API接口：http://localhost:28811/api
+- 管理后台：http://localhost:28811
 
 容器管理：
 ```bash
@@ -122,20 +125,93 @@ docker stop lingopod && docker rm lingopod
 ```
 
 
-### 3. 本地环境配置（建议优先docker）
+### 3. 功能特点
 
-1. 环境准备：
+#### 核心功能
+- 智能网页内容提取与总结
+  - 智能正文识别和广告过滤
+  - AI驱动的内容优化和结构化处理
+  - 关键信息提取与语义理解
+- AI驱动的自然对话生成
+  - 主持人与嘉宾角色设定
+  - 自然流畅的对话风格
+  - 专业术语智能处理
+- 高品质中英文文本转语音(TTS)
+  - 支持Edge-TTS和OpenAI TTS
+  - 多种音色和语速选择
+  - 智能音频合成与处理
+- 自动生成双语字幕
+  - 中英文字幕同步显示
+  - 精准的时间轴对齐
+  - 支持字幕样式配置
+
+#### 用户系统
+- 用户注册与认证
+- 个人偏好设置
+  - TTS音色选择
+  - 语速调节
+  - 音量设置
+- 任务管理
+  - 创建和监控任务
+  - 支持公开/私有任务
+  - 任务进度追踪
+  - 文件下载管理
+
+### 4. 开发指南
+
+#### 本地开发环境配置
+
+1. Conda环境配置:
 ```bash
+# 创建conda环境
+conda create -n lingopod python=3.11
+conda activate lingopod
+
 # 克隆项目
 git clone https://github.com/linshenkx/lingopod.git
 cd lingopod
-
-# 安装依赖（建议python版本3.11）
-pip install -r requirements.txt
-
-# 启动服务
-python main.py
 ```
+
+2. 安装Poetry和项目依赖:
+```bash
+# 安装poetry
+pip install poetry
+
+# 配置poetry使用当前conda环境（可选）
+poetry config virtualenvs.create false
+
+# 安装项目依赖
+poetry install
+```
+
+3. 启动开发服务器:
+```bash
+poetry run python server/main.py
+```
+
+### 5. API文档
+
+访问 `http://localhost:28811/docs` 查看完整的API文档。
+
+认证支持以下两种方式：
+1. 请求头方式 (推荐)
+```
+Authorization: Bearer <your_token>
+```
+
+2. URL查询参数方式
+```
+?token=<your_token>
+```
+
+### 6. 管理后台
+
+访问 `http://localhost:28811` 进入管理后台，支持：
+- 用户管理
+- 任务管理
+- 系统设置
+- 个人信息配置
+
 
 ## ⚙️ 配置说明
 
