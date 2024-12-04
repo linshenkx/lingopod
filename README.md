@@ -31,6 +31,16 @@ LingoPod 是一个开源项目，旨在将网页内容转换为双语播客。�
 - **管理后台**：[lingopod-manager](https://github.com/linshenkx/lingopod-manager) - 任务和系统管理
 - **官网**：[lingopod-web](https://github.com/linshenkx/lingopod-web)
 
+## 📱 客户端下载
+
+您可以通过以下方式获取客户端：
+
+- **Android APK**: [点击下载](https://ghproxy.always200.com/https://github.com/linshenkx/lingopod-client/releases/latest/download/lingopod-android.apk)
+- **Windows 客户端**: [点击下载](https://github.com/linshenkx/lingopod-client/releases/latest/download/lingopod-windows.zip)
+- **Web 版本**: [点击下载](https://github.com/linshenkx/lingopod-client/releases/latest/download/lingopod-web.zip)
+
+> 更多版本及历史更新请访问 [releases 页面](https://github.com/linshenkx/lingopod-client/releases)
+
 ### 在线演示
 
 - Web客户端：[client.lingopod.top](https://client.lingopod.top) : 建议使用用户名test，密码test
