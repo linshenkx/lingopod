@@ -6,41 +6,49 @@ from models.system_config import SystemConfig
 from schemas.config import ConfigResponse
 
 class Settings(BaseSettings):
+    # 基础路径配置
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     TASK_DIR: str = os.path.join(BASE_DIR, 'data', 'tasks')
     DB_PATH: str = os.path.join(BASE_DIR, 'data', 'tasks.db')
     
-    PORT: int = 28811
-    HOST: str = '0.0.0.0'
-    JWT_SECRET_KEY: str = 'your-secret-key'
-    JWT_ALGORITHM: str = 'HS256'
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24小时
+    # 服务器配置
+    PORT: int
+    HOST: str
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
     
     # 管理员账号配置
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_USERNAME: str
+    ADMIN_PASSWORD: str
     
-    # 是否允许注册
-    ALLOW_REGISTRATION: bool = True
-        
+    # 系统功能开关
+    ALLOW_REGISTRATION: bool
+    
+    # API配置
+    API_BASE_URL: str
+    API_KEY: str
+    MODEL: str
+    
+    # TTS配置
+    USE_OPENAI_TTS_MODEL: bool
+    TTS_BASE_URL: str
+    TTS_API_KEY: str
+    TTS_MODEL: str
+    
     # 代理配置
     HTTPS_PROXY: str | None = None
     
-    # API配置
-    API_BASE_URL: str = 'https://api.example.com/v1'
-    API_KEY: str = 'sk-aaa'
-    MODEL: str = 'Qwen/Qwen2.5-7B-Instruct'
-    USE_OPENAI_TTS_MODEL: bool = False
-    TTS_BASE_URL: str = 'http://localhost:5050/v1'
-    TTS_API_KEY: str = 'abc'
-    TTS_MODEL: str = 'tts-1'
-    ANCHOR_TYPE_MAP: Dict[str, str] = {
-        'host_cn': 'zh-CN-XiaoxiaoNeural',
-        'guest_cn': 'zh-CN-YunxiaNeural',
-        'host_en': 'en-US-JennyNeural',
-        'guest_en': 'en-US-ChristopherNeural',
-        'default': 'zh-CN-XiaoxiaoNeural'
-    }
+    # 主播声音映射配置
+    ANCHOR_TYPE_MAP: Dict[str, str]
+    
+    # URL校验配置
+    ALLOWED_URL_PATTERN: str
+    
+    # 测试用户配置
+    TEST_USER_ENABLED: bool
+    TEST_USERNAME: str
+    TEST_PASSWORD: str
     
     class Config:
         env_file = ".env"
@@ -63,7 +71,11 @@ class ConfigManager:
         'TTS_MODEL',
         'ANCHOR_TYPE_MAP',
         'HTTPS_PROXY',
-        'ALLOW_REGISTRATION'
+        'ALLOW_REGISTRATION',
+        'ALLOWED_URL_PATTERN',
+        'TEST_USER_ENABLED',
+        'TEST_USERNAME',
+        'TEST_PASSWORD'
     }
 
     def __new__(cls):

@@ -325,3 +325,138 @@ def test_health_check(client):
     data = response.json()
     assert data["status"] == "ok"
     assert data["message"] == "服务正常运行"
+
+def test_test_user_login_with_test_password(client, db_session):
+    """测试test用户使用test密码登录的特殊处理"""
+    # 确保启用test用户特殊处理
+    assert settings.TEST_USER_ENABLED == True
+    
+    # 使用test/test登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": settings.TEST_USERNAME,
+            "password": settings.TEST_PASSWORD
+        }
+    )
+    
+    # 验证登录成功
+    assert login_response.status_code == status.HTTP_200_OK
+    assert "access_token" in login_response.json()
+    
+    # 验证test用户已在数据库中创建
+    user = db_session.query(User).filter(User.username == settings.TEST_USERNAME).first()
+    assert user is not None
+    assert user.username == settings.TEST_USERNAME
+    assert user.is_active == True
+
+def test_test_user_login_after_password_change(client, db_session):
+    """测试test用户修改密码后仍可使用test密码登录"""
+    # 先使用test密码登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": settings.TEST_USERNAME,
+            "password": settings.TEST_PASSWORD
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    # 修改密码
+    new_password = "newpassword123"
+    response = client.post(
+        "/api/v1/users/me/password",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "old_password": settings.TEST_PASSWORD,
+            "new_password": new_password
+        }
+    )
+    assert response.status_code == status.HTTP_200_OK
+    
+    # 验证新密码可以登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": settings.TEST_USERNAME,
+            "password": new_password
+        }
+    )
+    assert login_response.status_code == status.HTTP_200_OK
+    
+    # 验证test密码仍然可以登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": settings.TEST_USERNAME,
+            "password": settings.TEST_PASSWORD
+        }
+    )
+    assert login_response.status_code == status.HTTP_200_OK
+
+def test_test_user_login_when_disabled(client, db_session):
+    """测试禁用test用户特殊处理后的登录行为"""
+    # 禁用test用户特殊处理
+    settings.update_config(
+        db=db_session,
+        key="TEST_USER_ENABLED",
+        value=False,
+        type_name="bool",
+        description="是否启用test用户特殊处理"
+    )
+    
+    # 尝试使用test密码登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": settings.TEST_USERNAME,
+            "password": settings.TEST_PASSWORD
+        }
+    )
+    
+    # 验证登录失败（因为特殊处理被禁用）
+    assert login_response.status_code == status.HTTP_401_UNAUTHORIZED
+    
+    # 恢复test用户特殊处理
+    settings.update_config(
+        db=db_session,
+        key="TEST_USER_ENABLED",
+        value=True,
+        type_name="bool",
+        description="是否启用test用户特殊处理"
+    )
+
+def test_test_user_config_update(client, test_admin, db_session):
+    """测试更新test用户配置"""
+    # 使用管理员登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "admin",
+            "password": "adminpass"
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    # 更新test用户配置
+    new_test_username = "testuser2"
+    response = client.put(
+        "/api/v1/configs/TEST_USERNAME",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "value": new_test_username,
+            "type": "str",
+            "description": "测试用户名"
+        }
+    )
+    assert response.status_code == status.HTTP_200_OK
+    
+    # 验证新的test用户名可以登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": new_test_username,
+            "password": settings.TEST_PASSWORD
+        }
+    )
+    assert login_response.status_code == status.HTTP_200_OK

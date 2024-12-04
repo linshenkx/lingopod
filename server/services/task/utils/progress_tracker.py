@@ -1,5 +1,7 @@
+from core.logging import log
 from typing import Optional
 
+import sqlalchemy
 from sqlalchemy.orm import Session
 
 from models.enums import TaskProgress, TaskStatus
@@ -75,16 +77,21 @@ class ProgressTracker:
     
     def update_error(self, error_msg: str, stack_trace: Optional[str] = None):
         """处理错误进度更新"""
-        error_message = error_msg
-        if stack_trace:
-            error_message += f"\n堆栈信息:\n{stack_trace}"
+        task_id = self.task.taskId  # 预先保存taskId
+        try:
+            error_message = error_msg
+            if stack_trace:
+                error_message += f"\n堆栈信息:\n{stack_trace}"
             
-        self._update_task_status(
-            status=TaskStatus.FAILED.value,
-            progress=TaskProgress.FAILED.value,
-            progress_message="任务执行失败",
-            current_step=self.task.current_step,
-            current_step_index=self.task.current_step_index,
-            step_progress=0,
-            error_message=error_message
-        )
+            self._update_task_status(
+                status=TaskStatus.FAILED.value,
+                progress=TaskProgress.FAILED.value,
+                progress_message="任务执行失败",
+                current_step=self.task.current_step,
+                current_step_index=self.task.current_step_index,
+                step_progress=0,
+                error_message=error_message
+            )
+        except (sqlalchemy.orm.exc.ObjectDeletedError, sqlalchemy.exc.InvalidRequestError) as e:
+            # 任务已被删除，记录日志
+            log.warning(f"Cannot update error status, task has been deleted: {task_id}")

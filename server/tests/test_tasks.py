@@ -1,11 +1,24 @@
 import os
-
+import pytest
 from fastapi import status
-
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from schemas.task import TaskCreate
 from core.config import settings
 from models.task import Task
 from models.enums import TaskStatus, TaskProgress
 from utils.time_utils import TimeUtil
+
+def get_valid_test_url():
+    """获取用于测试的有效URL"""
+    return "https://mp.weixin.qq.com/s/test-article"
+
+def get_test_task_data(url=None):
+    """获取用于测试的任务数据"""
+    return {
+        "url": url or get_valid_test_url(),
+        "is_public": True
+    }
 
 def test_create_task(client, test_user):
     """测试创建任务"""
@@ -23,10 +36,7 @@ def test_create_task(client, test_user):
     response = client.post(
         "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
-        json={
-            "url": "https://example.com/article",
-            "is_public": True
-        }
+        json=get_test_task_data()
     )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
@@ -293,10 +303,7 @@ def test_task_timestamps(client, test_user, db_session):
     response = client.post(
         "/api/v1/tasks",
         headers={"Authorization": f"Bearer {token}"},
-        json={
-            "url": "https://example.com/article",
-            "is_public": True
-        }
+        json=get_test_task_data()
     )
     
     assert response.status_code == status.HTTP_201_CREATED
@@ -507,3 +514,156 @@ def test_list_tasks_with_keyword_search(client, test_user, db_session):
     assert data["total"] == 1
     assert "测试" in data["items"][0]["title"]
     assert "example1" in data["items"][0]["url"]
+
+def test_create_task_with_valid_url(client: TestClient, db_session: Session, test_user):
+    """测试使用有效的微信公众号URL创建任务"""
+    # 获取token
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "testuser",
+            "password": "testpass"
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    url = "https://mp.weixin.qq.com/s/valid-article-id"
+    task_data = {
+        "url": url,
+        "is_public": False
+    }
+    
+    response = client.post(
+        "/api/v1/tasks",
+        json=task_data,
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
+    assert response.status_code == 201
+    data = response.json()
+    assert data["url"] == url
+    
+    # 验证任务是否真的创建在数据库中
+    task = db_session.query(Task).filter(Task.url == url).first()
+    assert task is not None
+
+def test_create_task_with_invalid_url(client: TestClient, db_session: Session, test_user):
+    """测试使用无效URL创建任务时的错误处理"""
+    # 获取token
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "testuser",
+            "password": "testpass"
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    invalid_urls = [
+        "https://example.com/article",  # 非微信公众号URL
+        "http://mp.weixin.qq.com/s/article-id",  # 非HTTPS
+        "https://other-site.com/post",  # 完全不相关的网站
+    ]
+    
+    for url in invalid_urls:
+        task_data = {
+            "url": url,
+            "is_public": False
+        }
+        
+        response = client.post(
+            "/api/v1/tasks",
+            json=task_data,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        
+        assert response.status_code == 422
+        error_data = response.json()
+        # 检查错误响应的结构和内容
+        assert isinstance(error_data, dict)  # 确认是字典
+        assert "message" in error_data  # 确认有错误消息
+        assert error_data["message"] == "请求数据无效"  # 验证错误消息
+        
+        # 验证没有任务被创建
+        task = db_session.query(Task).filter(Task.url == url).first()
+        assert task is None
+
+def test_create_task_with_modified_url_pattern(client: TestClient, db_session: Session, test_user, monkeypatch):
+    """测试修改URL模式后的任务创建"""
+    # 获取token
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "testuser",
+            "password": "testpass"
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    # 临时修改允许的URL模式
+    new_pattern = r'^https://(mp\.weixin\.qq\.com|example\.com)'
+    monkeypatch.setattr(settings, "ALLOWED_URL_PATTERN", new_pattern)
+    
+    # 测试新模式允许的URL
+    valid_urls = [
+        "https://mp.weixin.qq.com/s/article-1",
+        "https://example.com/post-1"
+    ]
+    
+    for url in valid_urls:
+        task_data = {
+            "url": url,
+            "is_public": False
+        }
+        
+        response = client.post(
+            "/api/v1/tasks",
+            json=task_data,
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert data["url"] == url
+
+def test_task_create_schema_validation():
+    """测试TaskCreate模型的URL验证"""
+    # 测试有效URL
+    valid_url = "https://mp.weixin.qq.com/s/valid-id"
+    task = TaskCreate(url=valid_url, is_public=False)
+    assert str(task.url) == valid_url
+    
+    # 测试无效URL
+    invalid_url = "https://example.com/article"
+    with pytest.raises(ValueError) as exc_info:
+        TaskCreate(url=invalid_url, is_public=False)
+    assert "URL必须匹配模式" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_create_task_error_handling(client: TestClient, db_session: Session, test_user):
+    """测试创建任务时的错误处理"""
+    # 获取token
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "testuser",
+            "password": "testpass"
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    # 测试无效的JSON数据
+    response = client.post(
+        "/api/v1/tasks",
+        json={"invalid": "data"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 422  # FastAPI的验证错误
+    
+    # 测试缺少必需字段
+    response = client.post(
+        "/api/v1/tasks",
+        json={"is_public": True},  # 缺少url字段
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 422

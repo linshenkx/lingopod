@@ -1,4 +1,5 @@
 from typing import List, Dict
+import sqlalchemy
 from sqlalchemy.orm import Session
 import os
 
@@ -68,11 +69,17 @@ class TaskProcessor:
 
     def process_task(self):
         """处理任务"""
+        task_id = self.task.taskId  # 预先保存taskId
         try:
             self._execute_steps()
             self._complete_task()
         except Exception as e:
-            self._handle_failure(e)
+            try:
+                self._handle_failure(e)
+            except (sqlalchemy.orm.exc.ObjectDeletedError, sqlalchemy.exc.InvalidRequestError):
+                # 任务已被删除，记录日志并优雅退出
+                log.warning(f"Task has been deleted during processing: {task_id}")
+                return
             raise
 
     def _execute_steps(self):
@@ -97,6 +104,11 @@ class TaskProcessor:
             for i, step in enumerate(self.steps[self.start_step:], self.start_step):
                 self._execute_single_step(step, i)
                 
+        except sqlalchemy.exc.InvalidRequestError as e:
+            # 任务可能已被删除，记录日志并优雅退出
+            log.warning(f"Task refresh failed, task may have been deleted: {str(e)}")
+            self.db.rollback()
+            raise Exception(f"任务可能已被删除: {str(e)}")
         except Exception as e:
             self.db.rollback()
             raise Exception(f"执行步骤失败: {str(e)}")
@@ -140,13 +152,19 @@ class TaskProcessor:
 
     def _handle_failure(self, error: Exception):
         """处理任务失败"""
-        error_msg = str(error)
-        if not isinstance(error, TaskError):
-            error_msg = f"任务执行异常: {error_msg}"
-        
-        self.progress_tracker.update_error(error_msg)
-        self.context_manager.set('status', TaskStatus.FAILED.value)
-        self.context_manager.save()
+        task_id = self.task.taskId  # 预先保存taskId
+        try:
+            error_msg = str(error)
+            if not isinstance(error, TaskError):
+                error_msg = f"任务执行异常: {error_msg}"
+            
+            self.progress_tracker.update_error(error_msg)
+            self.context_manager.set('status', TaskStatus.FAILED.value)
+            self.context_manager.save()
+        except (sqlalchemy.orm.exc.ObjectDeletedError, sqlalchemy.exc.InvalidRequestError) as e:
+            # 任务已被删除，记录日志
+            log.warning(f"Cannot update error status, task has been deleted: {task_id}")
+            raise  # 重新抛出异常以便上层处理
 
     def _update_step_progress(self, step: BaseStep, step_index: int, 
                             progress: int, message: str):

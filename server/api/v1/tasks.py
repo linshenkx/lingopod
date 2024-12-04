@@ -8,6 +8,7 @@ from auth.dependencies import get_current_active_user
 from db.session import get_db
 from core.logging import log
 import os
+from pydantic import ValidationError
 
 from models.enums import TaskProgress, TaskStatus
 from services.file import FileService
@@ -22,9 +23,20 @@ async def create_task(
     current_user: User = Depends(get_current_active_user)
 ):
     """创建新任务"""
-    task = task_crud.create(db, obj_in=task_in, user_id=current_user.id)
-    TaskService.start_processing(task)
-    return task
+    try:
+        task = task_crud.create(db, obj_in=task_in, user_id=current_user.id)
+        TaskService.start_processing(task)
+        return task
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"URL验证失败: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"创建任务失败: {str(e)}"
+        )
 
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(

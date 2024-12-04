@@ -10,14 +10,25 @@ from services.task.processor import TaskProcessor
 from utils.decorators import error_handler
 from services.file import FileService
 from core.logging import log
+import sqlalchemy.orm.exc
+import sqlalchemy.exc
 
 @error_handler
 def execute_task(task: Task, is_retry: bool = False):
     """执行任务的入口函数"""
+    task_id = task.taskId  # 预先保存taskId
     db = next(get_db())
     try:
         processor = TaskProcessor(task, db, is_retry)
-        processor.process_task()
+        try:
+            processor.process_task()
+        except (sqlalchemy.orm.exc.ObjectDeletedError, sqlalchemy.exc.InvalidRequestError) as e:
+            # 任务已被删除，记录日志并优雅退出
+            log.warning(f"Task has been deleted during processing: {task_id}")
+            return
+        except Exception as e:
+            # 其他错误继续抛出
+            raise
     finally:
         db.close()
         

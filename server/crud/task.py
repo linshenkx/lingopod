@@ -43,7 +43,7 @@ class TaskCRUD:
         db_obj: Task,
         obj_in: TaskUpdate
     ) -> Task:
-        for field, value in obj_in.dict(exclude_unset=True).items():
+        for field, value in obj_in.model_dump(exclude_unset=True).items():
             setattr(db_obj, field, value)
         db_obj.updatedAt = TimeUtil.now_ms()
         db.commit()

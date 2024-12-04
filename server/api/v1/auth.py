@@ -17,23 +17,42 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户已被禁用"
-        )
-    
-    # 更新最近登录时间
-    user.last_login = TimeUtil.now_ms()
-    db.commit()
+    # 特殊处理test用户
+    if (settings.TEST_USER_ENABLED and 
+        form_data.username == settings.TEST_USERNAME and 
+        form_data.password == settings.TEST_PASSWORD):
+        
+        # 获取或创建test用户
+        user = db.query(User).filter(User.username == settings.TEST_USERNAME).first()
+        if not user:
+            # 创建test用户
+            user = User(
+                username=settings.TEST_USERNAME,
+                hashed_password=get_password_hash(settings.TEST_PASSWORD),
+                nickname="Test User",
+                is_active=True
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+    else:
+        user = db.query(User).filter(User.username == form_data.username).first()
+        if not user or not verify_password(form_data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="用户名或密码错误",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户已被禁用"
+            )
+        
+        # 更新最近登录时间
+        user.last_login = TimeUtil.now_ms()
+        db.commit()
     
     access_token_expires = timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES

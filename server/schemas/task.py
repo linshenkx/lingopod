@@ -2,10 +2,21 @@ from pydantic import BaseModel, AnyHttpUrl, Field, field_validator
 from typing import Optional, List, Dict
 from utils.time_utils import TimeUtil
 from datetime import datetime
+import re
+from core.config import settings
 
 # 基础任务属性
 class TaskBase(BaseModel):
     url: AnyHttpUrl = Field(..., description="任务URL")
+    
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        # 获取允许的URL模式
+        pattern = settings.ALLOWED_URL_PATTERN
+        if not re.match(pattern, str(v)):
+            raise ValueError(f'URL必须匹配模式: {pattern}')
+        return v
 
 # 创建任务时的请求模型
 class TaskCreate(TaskBase):

@@ -570,14 +570,14 @@ curl http://api.example.com/api/v1/users/health
 
 | 参数名 | 类型 | 传参方式 | 必填 | 说明 |
 |--------|------|----------|------|------|
-| url | string | json | 是 | 任务URL |
+| url | string | json | 是 | 任务URL，必须匹配系统配置的URL模式(默认仅支持微信公众号文章URL) |
 | is_public | boolean | json | 否 | 是否公开,默认false |
 
 **响应:** TaskResponse (status_code: 201)
 ```json
 {
     "taskId": "task-123",
-    "url": "https://example.com/article",
+    "url": "https://mp.weixin.qq.com/s/article-id",
     "status": "pending",
     "progress": "waiting",
     "title": null,
@@ -598,11 +598,53 @@ curl http://api.example.com/api/v1/users/health
 }
 ```
 
-**说明:** 创建后任务会自动开始处理
+**错误响应:**
+- 400: URL验证失败
+```json
+{
+    "detail": "URL验证失败: URL必须匹配模式: ^https://mp\\.weixin\\.qq\\.com"
+}
+```
+- 422: 请求数据无效
+```json
+{
+    "message": "请求数据无效",
+    "errors": [
+        {
+            "loc": ["body", "url"],
+            "msg": "URL必须匹配模式: ^https://mp\\.weixin\\.qq\\.com",
+            "type": "value_error"
+        }
+    ]
+}
+```
+
+**说明:** 
+- 创建后任务会自动开始处理
+- URL校验规则由系统配置项 `ALLOWED_URL_PATTERN` 控制，默认仅允许微信公众号文章URL
+- URL必须以 `https://mp.weixin.qq.com` 开头（默认配置）
 
 **示例:**
 ```bash
-# 请求
+# 请求 - 有效URL
+curl -X POST http://api.example.com/api/v1/tasks \
+    -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
+    -H "Content-Type: application/json" \
+    -d '{
+        "url": "https://mp.weixin.qq.com/s/valid-article-id",
+        "is_public": true
+    }'
+
+# 响应
+{
+    "taskId": "task-123",
+    "url": "https://mp.weixin.qq.com/s/valid-article-id",
+    "status": "pending",
+    "progress": "waiting",
+    // ... 其他字段
+}
+
+# 请求 - 无效URL
 curl -X POST http://api.example.com/api/v1/tasks \
     -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..." \
     -H "Content-Type: application/json" \
@@ -611,27 +653,16 @@ curl -X POST http://api.example.com/api/v1/tasks \
         "is_public": true
     }'
 
-# 响应
+# 错误响应
 {
-    "taskId": "task-123",
-    "url": "https://example.com/article",
-    "status": "pending",
-    "progress": "waiting",
-    "title": null,
-    "current_step": null,
-    "total_steps": null,
-    "step_progress": null,
-    "audioUrlCn": null,
-    "audioUrlEn": null,
-    "subtitleUrlCn": null,
-    "subtitleUrlEn": null,
-    "is_public": true,
-    "user_id": 1,
-    "created_by": 1,
-    "updated_by": null,
-    "createdAt": 1710925200000,
-    "updatedAt": 1710925200000,
-    "progress_message": "等待处理"
+    "message": "请求数据无效",
+    "errors": [
+        {
+            "loc": ["body", "url"],
+            "msg": "URL必须匹配模式: ^https://mp\\.weixin\\.qq\\.com",
+            "type": "value_error"
+        }
+    ]
 }
 ```
 
@@ -857,7 +888,7 @@ curl http://api.example.com/api/v1/tasks/files/task-123/task-123_cn.mp3 \
 二进制文件内容(audio/mpeg)
 ```
 
-### 6. 重试失败任���
+### 6. 重试失败任务
 
 **路径:** `/api/v1/tasks/{task_id}/retry`  
 **方法:** `POST`  

@@ -43,8 +43,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 从 builder 阶段复制 Python 包
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
-# 复制应用文件
+# 复制应用文件和环境变量模板
 COPY server ./server
+COPY .env.template .env.template
+
+# 创建环境变量文件
+RUN cp .env.template .env
 
 # 暴露端口
 EXPOSE 28811
