@@ -27,11 +27,6 @@ async def create_task(
         task = task_crud.create(db, obj_in=task_in, user_id=current_user.id)
         TaskService.start_processing(task)
         return task
-    except ValidationError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"URL验证失败: {str(e)}"
-        )
     except Exception as e:
         raise HTTPException(
             status_code=500,

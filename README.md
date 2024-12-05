@@ -1,26 +1,67 @@
 # LingoPod (译播客) 🎙️
 
-> 开源的智能双语播客生成工具 - 将网页内容转化为沉浸式英语学习体验
+> 一款完全开源的双语播客生成工具，支持 Android、Windows 和 Web 多平台，让英语学习变得有趣而高效！能将任意网页内容转换成沉浸式英语学习材料。
 
-## 📖 简介
+## ✨ 主要特性
 
-LingoPod 是一个开源项目，旨在将网页内容转换为双语播客。它自动生成中英文音频和字幕，为内容创作者和语言学习者提供一站式解决方案。
+- 📱 多平台支持
+  - Android 应用
+  - Windows 客户端
+  - Web 网页版
+  - 完全开源代码
+- 🤖 智能功能
+  - 智能内容提取与总结
+  - AI 驱动的自然对话生成
+  - 高品质中英文 TTS
+  - 自动生成双语字幕
+- 🎯 实用功能
+  - 中英文音频切换
+  - 智能音频处理
+  - RESTful API 支持
+  - 跨平台数据同步
 
-## ✨ 核心特性
-
-- 🤖 智能内容提取与总结
-- 💬 AI 驱动的自然对话生成
-- 🗣️ 高品质中英文 TTS
-- 📝 自动生成双语字幕
-- 🔄 中英文音频切换
-- 🎵 智能音频处理
-- 🚀 RESTful API 支持
-- 📱 跨平台支持
+## 🖼️ 界面预览
 
 <div align="center">
   <img src="https://ghproxy.always200.com/https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/home-dark.png" width="45%" alt="主页深色模式"/>
   <img src="https://ghproxy.always200.com/https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/player-dark.png" width="45%" alt="播放器深色模式"/>
 </div>
+
+## ⚡️ 在线体验
+
+您可以通过以下方式快速体验LingoPod:
+
+### 主要入口
+- 🌐 Web客户端: [client.lingopod.top](https://client.lingopod.top)
+  - 用于生成和播放双语播客内容
+  - 测试账号: test / test（注：仅供功能体验，有使用限制）
+
+### 其他服务
+- 📊 管理后台: [manager.lingopod.top](https://manager.lingopod.top)
+  - 用于管理任务和查看系统状态
+- 🔧 API服务: [server.lingopod.top](https://server.lingopod.top/api/v1/users/health)
+  - RESTful API接口服务
+
+## ⚙️ 使用须知
+
+### 1. 内容支持范围
+- 在线版本出于安全考虑，仅支持微信公众号文章（https://mp.weixin.qq.com）
+- 自部署版本可配置支持任意网页内容
+
+### 2. 试用服务说明
+- 仅供功能体验和测试
+- 服务可能随时调整，不保证数据持久化
+- 生产环境建议自行部署
+
+### 3. 部署配置说明
+- 客户端与管理后台：
+  - 支持独立部署
+  - 默认API地址：https://server.lingopod.top
+  - 支持在界面中切换自定义API地址
+- 生产环境推荐：
+  - 自行部署API服务
+  - 可继续使用在线版客户端
+
 
 ## 🎯 项目架构
 
@@ -41,19 +82,7 @@ LingoPod 是一个开源项目，旨在将网页内容转换为双语播客。�
 
 > 更多版本及历史更新请访问 [releases 页面](https://github.com/linshenkx/lingopod-client/releases)
 
-### 在线演示
-
-- Web客户端：[client.lingopod.top](https://client.lingopod.top) : 建议使用用户名test，密码test
-- 管理后台：[manager.lingopod.top](https://manager.lingopod.top)
-- API 服务：[server.lingopod.top](https://server.lingopod.top)
-
-> **注意**: [https://server.lingopod.top](https://server.lingopod.top) 仅提供有限试用，只支持微信公众号文章链接转换为播客，不保证运行稳定性，随时可能删除数据/停止服务，请勿用于重要场景，建议自行部署。
-
-## ⚙️ 部署说明
-
-客户端和后台管理界面均可自行部署，且可在界面修改 API 服务地址。目前默认使用的是 [https://server.lingopod.top](https://server.lingopod.top)。客户端和后台管理界面是无状态的，只需要部署自己的 API 服务，然后在客户端切换 API 地址即可。
-
-## API 依赖说明
+## 外部依赖说明
 
 项目依赖两个核心服务:
 - **LLM 服务**: 通过 OpenAI 兼容接口对接,支持各类大语言模型，使用免费的 qwen2.5-7b 模型也可以达到较好效果
