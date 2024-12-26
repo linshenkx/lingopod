@@ -9,7 +9,7 @@ from utils.time_utils import TimeUtil
 class Task(Base):
     """任务模型
     
-    用于存储和管理任务的执行状态、进度和相关资源。
+    用于存储和管理任务的执行状态、进度和相关资源。支持多个英语等级的音频和字幕文件。
     """
     __tablename__ = "tasks"
 
@@ -22,17 +22,33 @@ class Task(Base):
     current_step_index = Column(Integer, nullable=True)  # 当前步骤序号
     total_steps = Column(Integer, nullable=True)  # 总步骤数
     step_progress = Column(Integer, nullable=True)  # 当前步骤的进度(0-100)
-    audioUrlCn = Column(String, nullable=True)  # 中文音频文件URL
-    audioUrlEn = Column(String, nullable=True)  # 英文音频文件URL
-    subtitleUrlCn = Column(String, nullable=True)  # 中文字幕文件URL
-    subtitleUrlEn = Column(String, nullable=True)  # 英文字幕文件URL
+    
+    # 风格参数
+    style_params = Column(JSON, nullable=False, default={
+        "content_length": "medium",
+        "tone": "casual",
+        "emotion": "neutral"
+    })
+    
+    # 文件URL，按难度等级和语言组织
+    # 格式: {
+    #   "elementary": {
+    #     "en": {"audio": "url", "subtitle": "url"},
+    #     "cn": {"audio": "url", "subtitle": "url"}
+    #   },
+    #   "intermediate": {...},
+    #   "advanced": {...}
+    # }
+    files = Column(JSON, nullable=False, default=dict)
+    
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 所属用户ID
     is_public = Column(Boolean, nullable=False, default=False)  # 是否公开
     created_by = Column(Integer, nullable=False)  # 创建者ID
     updated_by = Column(Integer, nullable=True)  # 更新者ID
-    createdAt = Column(BigInteger, nullable=False, default=TimeUtil.now_ms)  # 创建时间(毫秒时间戳)
-    updatedAt = Column(BigInteger, nullable=False, default=TimeUtil.now_ms, onupdate=TimeUtil.now_ms)  # 更新时间(毫秒时间戳)
-    progress_message = Column(String)  # 进度消息，用于显示当前执行状态的详细信息
+    created_at = Column(BigInteger, nullable=False, default=TimeUtil.now_ms)  # 创建时间(毫秒时间戳)
+    updated_at = Column(BigInteger, nullable=False, default=TimeUtil.now_ms, onupdate=TimeUtil.now_ms)  # 更新时间(毫秒时间戳)
+    error = Column(String, nullable=True)  # 错误信息
+    progress_message = Column(String, nullable=True)  # 进度消息
     
     # 关联关系
     user = relationship(
@@ -83,6 +99,27 @@ class Task(Base):
         if isinstance(progress, str):
             progress = TaskProgress(progress)
         return progress
+
+    def to_response(self) -> dict:
+        """转换为API响应格式"""
+        return {
+            "taskId": self.taskId,
+            "url": self.url,
+            "status": self.status,
+            "progress": self.progress,
+            "title": self.title,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "is_public": self.is_public,
+            "style_params": self.style_params,
+            "files": self.files,
+            "current_step": self.current_step,
+            "current_step_index": self.current_step_index,
+            "total_steps": self.total_steps,
+            "step_progress": self.step_progress,
+            "error": self.error,
+            "progress_message": self.progress_message
+        }
 
     def __repr__(self):
         return f"<Task(taskId={self.taskId}, status={self.status})>"

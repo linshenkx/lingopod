@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, BigInteger, Integer, Boolean
 from sqlalchemy.orm import relationship
-from db.base import Base
 from utils.time_utils import TimeUtil
+from db.base import Base
 
 class User(Base):
     __tablename__ = "users"

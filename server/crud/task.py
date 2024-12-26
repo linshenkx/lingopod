@@ -6,19 +6,22 @@ from models.enums import TaskStatus, TaskProgress
 from utils.time_utils import TimeUtil
 import uuid
 from sqlalchemy import or_
+from core.logging import log
+from models.user import User
 
-class TaskCRUD:
-    def create(self, db: Session, *, obj_in: TaskCreate, user_id: int) -> Task:
-        task_id = str(uuid.uuid4())
+class TaskCRUD():
+    def create(self, db: Session, *, obj_in: TaskCreate, user: User) -> Task:
+        """创建任务"""
         db_obj = Task(
-            taskId=task_id,
-            url=str(obj_in.url),
+            taskId=str(uuid.uuid4()),
+            url=obj_in.url,
             status=TaskStatus.PENDING.value,
-            progress=TaskProgress.WAITING.value,
-            createdAt=TimeUtil.now_ms(),
-            updatedAt=TimeUtil.now_ms(),
-            user_id=user_id,
-            created_by=user_id
+            progress=TaskProgress.WAITING.value,  # 添加初始进度状态
+            is_public=obj_in.is_public,
+            created_by=user.id,
+            user_id=user.id,
+            created_at=TimeUtil.now_ms(),
+            updated_at=TimeUtil.now_ms()
         )
         db.add(db_obj)
         db.commit()
@@ -32,7 +35,7 @@ class TaskCRUD:
         return (
             db.query(Task)
             .filter(Task.status == 'completed')
-            .order_by(Task.updatedAt.desc())
+            .order_by(Task.updated_at.desc())
             .all()
         )
 
@@ -45,7 +48,7 @@ class TaskCRUD:
     ) -> Task:
         for field, value in obj_in.model_dump(exclude_unset=True).items():
             setattr(db_obj, field, value)
-        db_obj.updatedAt = TimeUtil.now_ms()
+        db_obj.updated_at = TimeUtil.now_ms()
         db.commit()
         db.refresh(db_obj)
         return db_obj
@@ -82,9 +85,9 @@ class TaskCRUD:
         
         # 日期过滤
         if params.start_date:
-            query = query.filter(Task.createdAt >= params.start_date)
+            query = query.filter(Task.created_at >= params.start_date)
         if params.end_date:
-            query = query.filter(Task.createdAt <= params.end_date)
+            query = query.filter(Task.created_at <= params.end_date)
             
         # 公开状态过滤
         if params.is_public is not None:
@@ -102,15 +105,18 @@ class TaskCRUD:
         if params.url_keyword:
             query = query.filter(Task.url.ilike(f"%{params.url_keyword}%"))
         
-        # 获取总数
+        # 排序
+        query = query.order_by(Task.created_at.desc())
+        
+        # 计算总数
         total = query.count()
         
-        # 排序和分页
-        tasks = query.order_by(Task.updatedAt.desc()) \
-                    .offset(params.offset) \
-                    .limit(params.limit) \
-                    .all()
-                    
-        return tasks, total
+        # 分页
+        if params.offset:
+            query = query.offset(params.offset)
+        if params.limit:
+            query = query.limit(params.limit)
+        
+        return query.all(), total
 
 task = TaskCRUD()

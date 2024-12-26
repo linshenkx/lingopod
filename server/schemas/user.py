@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import List, Optional
 
 class UserBase(BaseModel):
@@ -19,9 +19,7 @@ class UserInDB(UserBase):
     id: int
     is_active: bool = True
     is_admin: bool = False
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserResponse(BaseModel):
     id: int
@@ -34,9 +32,7 @@ class UserResponse(BaseModel):
     last_login: Optional[int] = None
     tts_voice: str
     tts_rate: int
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserListResponse(BaseModel):
     total: int

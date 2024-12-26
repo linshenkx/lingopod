@@ -55,15 +55,22 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
-def client(db_session):
-    def override_get_db():
+def override_get_db(db_session):
+    """覆盖get_db依赖，确保所有代码使用相同的测试数据库会话"""
+    def _get_test_db():
         try:
             yield db_session
         finally:
             pass
-    
+    return _get_test_db
+
+@pytest.fixture
+def client(db_session, override_get_db):
+    """创建测试客户端，并覆盖数据库依赖"""
+    from db.session import get_db
     app.dependency_overrides[get_db] = override_get_db
-    return TestClient(app)
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 @pytest.fixture
 def test_user(db_session):
@@ -91,28 +98,57 @@ def test_admin(db_session):
     return admin
 
 @pytest.fixture
-def test_task(db_session, test_user):
-    current_time = TimeUtil.now_ms()
+def test_task(test_user, db_session):
+    """创建测试任务"""
     task = Task(
-        taskId="test-task-id",
-        url="https://example.com/article",
+        taskId="test-task",
+        url="https://mp.weixin.qq.com/s/UXb0KyDCSHkUS_4dCGlsfQ",
         status=TaskStatus.COMPLETED.value,
         progress=TaskProgress.COMPLETED.value,
         user_id=test_user.id,
         created_by=test_user.id,
-        createdAt=current_time,
-        updatedAt=current_time
+        updated_by=test_user.id,
+        is_public=True,
+        created_at=TimeUtil.now_ms(),
+        updated_at=TimeUtil.now_ms(),
+        current_step="任务已完成",
+        style_params={
+            "content_length": "medium",
+            "tone": "casual",
+            "emotion": "neutral"
+        }
     )
     db_session.add(task)
     db_session.commit()
     
+    # 创建任务文件夹
     task_dir = os.path.join(settings.TASK_DIR, task.taskId)
     os.makedirs(task_dir, exist_ok=True)
     
-    yield task
+    return task
+
+@pytest.fixture
+def test_tasks(test_user, db_session):
+    """创建多个测试任务"""
+    tasks = []
+    for i in range(5):
+        task = Task(
+            taskId=f"test-task-{i}",
+            url="https://mp.weixin.qq.com/s/UXb0KyDCSHkUS_4dCGlsfQ",
+            status=TaskStatus.COMPLETED.value,
+            progress=TaskProgress.COMPLETED.value,
+            user_id=test_user.id,
+            created_by=test_user.id,
+            updated_by=test_user.id,
+            is_public=True,
+            created_at=TimeUtil.now_ms(),
+            updated_at=TimeUtil.now_ms()
+        )
+        tasks.append(task)
     
-    if os.path.exists(task_dir):
-        shutil.rmtree(task_dir)
+    db_session.add_all(tasks)
+    db_session.commit()
+    return tasks
 
 @pytest.fixture
 def test_users(db_session):
@@ -130,35 +166,21 @@ def test_users(db_session):
     return users
 
 @pytest.fixture
-def test_tasks(db_session, test_users):
-    tasks = []
-    for i, user in enumerate(test_users):
-        task = Task(
-            taskId=f"test-task-id-{i}",
-            url=f"https://example.com/article{i}",
-            status=TaskStatus.COMPLETED.value,
-            progress=TaskProgress.COMPLETED.value,
-            user_id=user.id,
-            created_by=user.id,
-            createdAt=TimeUtil.now_ms(),
-            updatedAt=TimeUtil.now_ms()
-        )
-        db_session.add(task)
-        tasks.append(task)
-        
-        # 创建任务文件夹和相关文件
-        task_dir = os.path.join(settings.TASK_DIR, task.taskId)
-        os.makedirs(task_dir, exist_ok=True)
+def mock_execute_task(monkeypatch, db_session):
+    """Mock execute_task to use test database session"""
+    from services.task.task_service import execute_task
     
-    db_session.commit()
+    def mock_task_execution(task_id: str, is_retry: bool = False):
+        return execute_task(task_id, is_retry, db_session=db_session)
     
-    yield tasks
-    
-    # 清理测试文件
-    for task in tasks:
-        task_dir = os.path.join(settings.TASK_DIR, task.taskId)
-        if os.path.exists(task_dir):
-            shutil.rmtree(task_dir)
+    # 替换原始的execute_task函数
+    monkeypatch.setattr("services.task.task_service.execute_task", mock_task_execution)
+    return mock_task_execution
+
+@pytest.fixture(autouse=True)
+def setup_task_execution(mock_execute_task):
+    """自动使用mock的任务执行函数"""
+    pass
 
 @pytest.fixture(autouse=True)
 def test_settings():
@@ -166,10 +188,31 @@ def test_settings():
     # 保存原始设置
     original_task_dir = settings.TASK_DIR
     
-    # 创建临时目录作为测试任务目录
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # 修改设置
-        settings.TASK_DIR = temp_dir
+    # 创建临时目录
+    temp_dir = tempfile.mkdtemp()
+    settings.TASK_DIR = temp_dir
+    
+    try:
         yield
-        # 测试结束后恢复原始设置
-        settings.TASK_DIR = original_task_dir
+    finally:
+        # 确保所有文件句柄都关闭
+        try:
+            for root, dirs, files in os.walk(temp_dir, topdown=False):
+                for name in files:
+                    try:
+                        os.chmod(os.path.join(root, name), 0o666)
+                    except:
+                        pass
+                for name in dirs:
+                    try:
+                        os.chmod(os.path.join(root, name), 0o777)
+                    except:
+                        pass
+            
+            # 尝试删除临时目录
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except Exception as e:
+            print(f"Warning: Failed to cleanup temp directory {temp_dir}: {str(e)}")
+        finally:
+            # 恢复原始设置
+            settings.TASK_DIR = original_task_dir

@@ -17,17 +17,19 @@ from services.task.utils.progress_tracker import ProgressTracker
 class AudioStep(BaseStep):
     def __init__(
         self,
+        level: str,
         lang: str,
         progress_tracker: ProgressTracker,
         context_manager: ContextManager
     ):
         super().__init__(
-            name=f"生成{lang}音频",
-            input_files=[f"dialogue_{lang}.json"],
-            output_files=[f"audio_files_{lang}.json"],
+            name=f"生成{level}-{lang}音频",
+            input_files=[f"{level}/dialogue_{lang}.json"],
+            output_files=[f"{level}/audio_files_{lang}.json"],
             progress_tracker=progress_tracker,
             context_manager=context_manager
         )
+        self.level = level
         self.lang = lang
         self.edge_tts = EdgeTTSService()
         self.openai_tts = OpenAI(
@@ -96,14 +98,17 @@ class AudioStep(BaseStep):
     
     def _execute(self, context_manager: ContextManager) -> Dict:
         """执行音频生成步骤"""
-        dialogue_key = f"dialogue_{self.lang}.json"
+        level_dir = context_manager.get("level_dir")
+        if not level_dir:
+            raise ValueError(f"缺少{self.level}难度等级目录")
+            
+        dialogue_key = f"{self.level}/dialogue_{self.lang}.json"
         dialogue_filename = context_manager.get(dialogue_key)
         if not dialogue_filename:
             raise ValueError(f"缺少{self.lang}对话内容")
             
         # 从文件读取对话内容
-        temp_dir = context_manager.get("temp_dir")
-        dialogue_path = os.path.join(temp_dir, dialogue_filename)
+        dialogue_path = os.path.join(level_dir, dialogue_filename)
         
         with open(dialogue_path, 'r', encoding='utf-8') as f:
             dialogue = json.load(f)
@@ -130,10 +135,10 @@ class AudioStep(BaseStep):
             )
 
             audio_filename = f"{i:04d}_{self.lang}_{item['role']}.mp3"
-            file_path = os.path.join(temp_dir, audio_filename)
+            file_path = os.path.join(level_dir, audio_filename)
             
             if not self._generate_audio_with_retry(item, file_path, anchor_type):
-                raise Exception(f"第 {i+1} 条{self.lang}对话音频生成失败，已重试最大次数")
+                raise Exception(f"第 {i+1} 条{self.lang}对话音频生成失败，已重试最大次数:{item['content']}")
             
             audio_files.append({
                 "index": i,
@@ -142,15 +147,14 @@ class AudioStep(BaseStep):
             })
         
         # 保存音频文件列表
-        task_id = context_manager.get("taskId")
-        audio_files_filename = f"{task_id}_audio_files_{self.lang}.json"
-        audio_files_path = os.path.join(temp_dir, audio_files_filename)
+        audio_files_filename = f"audio_files_{self.lang}.json"
+        audio_files_path = os.path.join(level_dir, audio_files_filename)
         
         with open(audio_files_path, 'w', encoding='utf-8') as f:
             json.dump(audio_files, f, ensure_ascii=False, indent=2)
             
         return {
-            f"audio_files_{self.lang}.json": audio_files_filename
+            f"{self.level}/audio_files_{self.lang}.json": audio_files_filename
         }
 
     @error_handler

@@ -41,17 +41,48 @@ curl http://api.example.com/api/v1/auth/me?token=eyJ0eXAiOiJKV1QiLCJhbGc...
 | current_step_index | integer | 否 | 当前步骤序号(从0开始) |
 | total_steps | integer | 否 | 总步骤数 |
 | step_progress | integer | 否 | 当前步骤的进度(0-100) |
-| audioUrlCn | string | 否 | 中文音频文件URL |
-| audioUrlEn | string | 否 | 英文音频文件URL |
-| subtitleUrlCn | string | 否 | 中文字幕文件URL |
-| subtitleUrlEn | string | 否 | 英文字幕文件URL |
+| style_params | object | 是 | 对话风格参数 |
+| files | object | 是 | 按难度等级和语言组织的文件信息 |
 | user_id | integer | 是 | 所属用户ID |
 | is_public | boolean | 是 | 是否公开 |
 | created_by | integer | 是 | 创建者ID |
 | updated_by | integer | 否 | 更新者ID |
-| createdAt | integer | 是 | 创建时间(毫秒时间戳) |
-| updatedAt | integer | 是 | 更新时间(毫秒时间戳) |
+| created_at | integer | 是 | 创建时间(毫秒时间戳) |
+| updated_at | integer | 是 | 更新时间(毫秒时间戳) |
+| error | string | 否 | 错误信息 |
 | progress_message | string | 否 | 进度消息，用于显示当前执行状态的详细信息 |
+
+### StyleParams 风格参数
+
+| 字段名 | 类型 | 可选值 | 默认值 | 说明 |
+|--------|------|--------|--------|------|
+| content_length | string | short/medium/long | medium | 对话长度:short(5-8轮),medium(8-12轮),long(12-15轮) |
+| tone | string | casual/formal/humorous | casual | 对话语气:casual(轻松),formal(正式),humorous(幽默) |
+| emotion | string | neutral/enthusiastic/professional | neutral | 情感色彩:neutral(中性),enthusiastic(热情),professional(专业) |
+
+### Files 文件结构
+
+文件信息按难度等级和语言进行组织,格式如下:
+```json
+{
+  "elementary": {
+    "en": {
+      "audio": "音频文件URL",
+      "subtitle": "字幕文件URL"
+    },
+    "cn": {
+      "audio": "音频文件URL", 
+      "subtitle": "字幕文件URL"
+    }
+  },
+  "intermediate": {
+    // 同上
+  },
+  "advanced": {
+    // 同上
+  }
+}
+```
 
 ### TaskStatus 任务状态枚举
 
@@ -854,7 +885,7 @@ curl -X DELETE http://api.example.com/api/v1/tasks/task-123 \
 
 ### 5. 获取任务文件
 
-**路径:** `/api/v1/tasks/files/{task_id}/{filename}`  
+**路径:** `/api/v1/tasks/files/{task_id}/{level}/{lang}/{file_type}`  
 **方法:** `GET`  
 **权限:** 用户
 
@@ -863,16 +894,18 @@ curl -X DELETE http://api.example.com/api/v1/tasks/task-123 \
 | 参数名 | 类型 | 必填 | 说明 |
 |--------|------|------|------|
 | task_id | string | 是 | 任务ID |
-| filename | string | 是 | 文件名 |
+| level | string | 是 | 难度等级(elementary/intermediate/advanced) |
+| lang | string | 是 | 语言(cn/en) |
+| file_type | string | 是 | 文件类型(audio/subtitle) |
 
 **响应:** FileResponse
 
 **说明:**
 - 支持的文件类型:
-  - .mp3: audio/mpeg
-  - .srt: application/x-subrip
-  - 其他: text/plain
+  - audio: audio/mpeg (.mp3文件)
+  - subtitle: application/x-subrip (.srt文件)
 - 用户只能访问自己的任务文件或公开任务文件
+- 文件按难度等级和语言分类存储
 
 **错误响应:**
 - 404: 任务或文件不存在
@@ -880,12 +913,16 @@ curl -X DELETE http://api.example.com/api/v1/tasks/task-123 \
 
 **示例:**
 ```bash
-# 请求
-curl http://api.example.com/api/v1/tasks/files/task-123/task-123_cn.mp3 \
+# 获取中文初级音频
+curl http://api.example.com/api/v1/tasks/files/task-123/elementary/cn/audio \
+    -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+
+# 获取英文高级字幕
+curl http://api.example.com/api/v1/tasks/files/task-123/advanced/en/subtitle \
     -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
 
 # 响应
-二进制文件内容(audio/mpeg)
+二进制文件内容(audio/mpeg 或 application/x-subrip)
 ```
 
 ### 6. 重试失败任务

@@ -101,10 +101,10 @@ docker build -t linshen/lingopod:latest .
 ### 2. 标记和推送 Docker 镜像
 ```bash
 # 标记镜像
-docker tag linshen/lingopod:latest linshen/lingopod:2.0
+docker tag linshen/lingopod:latest linshen/lingopod:3.0
 
 # 推送镜像
-docker push linshen/lingopod:2.0
+docker push linshen/lingopod:3.0
 docker push linshen/lingopod:latest
 
 ```

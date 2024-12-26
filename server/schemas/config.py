@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, Optional
 
 class ConfigBase(BaseModel):
@@ -11,9 +11,7 @@ class ConfigUpdate(ConfigBase):
 
 class ConfigResponse(ConfigBase):
     key: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ConfigListResponse(BaseModel):
-    configs: Dict[str, ConfigResponse] 
+    configs: Dict[str, ConfigResponse]

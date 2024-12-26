@@ -42,15 +42,18 @@ class ContextManager:
     def set(self, key: str, value: Any):
         """设置上下文中的值"""
         self._context[key] = value
+        self.save()
         
     def update(self, data: Dict):
         """批量更新上下文"""
         self._context.update(data)
+        self.save()
         
     def delete(self, key: str):
         """删除上下文中的值"""
         if key in self._context:
             del self._context[key]
+        self.save()
             
     def has_key(self, key: str) -> bool:
         """检查键是否存在"""

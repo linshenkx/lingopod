@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from ..utils.context import ContextManager
 from ..utils.errors import StepInputError, StepOutputError
 from ..utils.progress_tracker import ProgressTracker
-
+from core.logging import log
 
 class BaseStep(ABC):
     def __init__(
@@ -30,10 +30,11 @@ class BaseStep(ABC):
             
         # 执行步骤
         result = self._execute(self.context_manager)
+        log.info(f"步骤 {self.name} 执行结果: {result}")
         
         # 验证输出
         if not self._validate_outputs(result):
-            raise StepOutputError(self.name, "步骤输出不完整")
+            raise StepOutputError(self.name, f"步骤输出不完整，当前输出: {result}")
             
         return result
         
@@ -42,8 +43,21 @@ class BaseStep(ABC):
         return context_manager.validate_keys(self.input_files)
         
     def _validate_outputs(self, result: Dict) -> bool:
-        """验证输出数据"""
-        return all(output_file in result for output_file in self.output_files)
+        """验证步骤输出"""
+        if not isinstance(result, dict):
+            log.error(f"步骤 {self.name} 输出类型错误: 期望 dict, 实际是 {type(result)}")
+            return False
+        
+        missing_outputs = []
+        for output_file in self.output_files:
+            if output_file not in result:
+                missing_outputs.append(output_file)
+        
+        if missing_outputs:
+            log.error(f"步骤 {self.name} 输出不完整，缺少以下文件: {missing_outputs}")
+            return False
+        
+        return True
     
     @abstractmethod
     def _execute(self, context_manager: ContextManager) -> Dict:

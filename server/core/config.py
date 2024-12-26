@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from typing import Dict, Any
 import os
@@ -50,9 +51,10 @@ class Settings(BaseSettings):
     TEST_USERNAME: str
     TEST_PASSWORD: str
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True
+    )
 
 class ConfigManager:
     _instance = None
