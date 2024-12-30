@@ -1,6 +1,6 @@
 # LingoPod (译播客) 🎙️
 
-> 一款完全开源的双语播客生成工具，支持 Android、Windows 和 Web 多平台，让英语学习变得有趣而高效！能将任意网页内容转换成沉浸式英语学习材料。
+> 一款开源的双语播客生成工具，让英语学习变得有趣而高效！支持网页内容转换和RSS订阅追踪，可持续获取您感兴趣的英语学习材料。通过多平台客户端（Android/Windows/Web）、多级英语难度（CET-4到IELTS 6.5+）和AI驱动的对话生成，为您打造沉浸式英语学习体验。
 
 ## ✨ 主要特性
 
@@ -14,6 +14,15 @@
   - AI 驱动的自然对话生成
   - 高品质中英文 TTS
   - 自动生成双语字幕
+  - 多级英语难度支持
+    - 初级英语 (CEFR A2-B1, CET-4)
+    - 中级英语 (CEFR B1-B2, CET-6)
+    - 高级英语 (CEFR B2-C1, IELTS 6.5-7.5)
+  - RSS 订阅支持
+    - RSS 源管理与监控
+    - 自动定时抓取更新
+    - 智能增量更新检测
+    - 个性化订阅配置
 - 🎯 实用功能
   - 中英文音频切换
   - 智能音频处理
@@ -136,9 +145,9 @@
 ## 📖 文档
 
 - [开发文档](https://github.com/linshenkx/lingopod/main/README-dev.md)
-- [API 文档](https://github.com/linshenkx/lingopod/main/docs/api.md)
+- [API 文档](https://github.com/linshenkx/lingopod/main/docs/api/README.md)
 - [项目结构](https://github.com/linshenkx/lingopod/main/docs/structure.md)
-- [设计原则](https://github.com/linshenkx/lingopod/main/docs/design.md)
+- [功能设计](https://github.com/linshenkx/lingopod/main/docs/design.md)
 
 ## 🤝 贡献指南
 
