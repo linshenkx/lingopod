@@ -1,6 +1,6 @@
 # LingoPod (译播客) 🎙️
 
-> 一款开源的双语播客生成工具，让英语学习变得有趣而高效！支持网页内容转换和RSS订阅追踪，可持续获取您感兴趣的英语学习材料。通过多平台客户端（Android/Windows/Web）、多级英语难度（CET-4到IELTS 6.5+）和AI驱动的对话生成，为您打造沉浸式英语学习体验。
+> 一款支持多平台的 AI 双语播客应用。支持RSS订阅和URL提交，将网页文章转换成您感兴趣的英语学习材料，并支持多级难度循序渐进学习。
 
 ## ✨ 主要特性
 
@@ -32,8 +32,8 @@
 ## 🖼️ 界面预览
 
 <div align="center">
-  <img src="https://ghproxy.always200.com/https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/home-dark.png" width="45%" alt="主页深色模式"/>
-  <img src="https://ghproxy.always200.com/https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/player-dark.png" width="45%" alt="播放器深色模式"/>
+  <img src="https://ghproxy.always200.com/https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/home-dark.jpg" width="45%" alt="主页深色模式"/>
+  <img src="https://ghproxy.always200.com/https://raw.githubusercontent.com/linshenkx/lingopod-client/main/images/player-dark.jpg" width="45%" alt="播放器深色模式"/>
 </div>
 
 ## ⚡️ 在线体验
@@ -144,10 +144,10 @@
 
 ## 📖 文档
 
-- [开发文档](https://github.com/linshenkx/lingopod/main/README-dev.md)
-- [API 文档](https://github.com/linshenkx/lingopod/main/docs/api/README.md)
-- [项目结构](https://github.com/linshenkx/lingopod/main/docs/structure.md)
-- [功能设计](https://github.com/linshenkx/lingopod/main/docs/design.md)
+- [开发文档](https://github.com/linshenkx/lingopod/blob/main/README-dev.md)
+- [API 文档](https://github.com/linshenkx/lingopod/blob/main/docs/api/README.md)
+- [项目结构](https://github.com/linshenkx/lingopod/blob/main/docs/structure.md)
+- [功能设计](https://github.com/linshenkx/lingopod/blob/main/docs/design.md)
 
 ## 🤝 贡献指南
 
