@@ -30,9 +30,11 @@ class EdgeTTSService:
         try:
             edge_tts_voice = self.voice_mapping.get(voice, voice)
             proxy = settings.HTTPS_PROXY
-                        
             temp_output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            communicator = edge_tts.Communicate(text, edge_tts_voice, connect_timeout=5, proxy=proxy)
+            if proxy:
+                communicator = edge_tts.Communicate(text, edge_tts_voice, connect_timeout=5, proxy=proxy)
+            else:
+                communicator = edge_tts.Communicate(text, edge_tts_voice, connect_timeout=5)
             await communicator.save(temp_output_file.name)
 
             if response_format == "mp3" and speed == 1.0:
