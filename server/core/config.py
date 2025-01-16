@@ -56,6 +56,26 @@ class Settings(BaseSettings):
     TEST_USERNAME: str
     TEST_PASSWORD: str
     
+    # RSS配置
+    RSS_DEFAULT_FETCH_INTERVAL_SECONDS: int  # RSS源的默认抓取间隔（秒）
+    RSS_MAX_ENTRIES_PER_FEED: int           # 每个RSS源最多处理的条目数
+    RSS_MAX_RETRY_COUNT: int                # RSS源抓取失败最大重试次数
+    RSS_ERROR_RETRY_INTERVAL: int           # RSS源出错后重试间隔（秒）
+    RSS_CONCURRENT_TASKS: int               # RSS任务并发处理数量
+    RSS_MIN_FETCH_INTERVAL: int             # 最小抓取间隔（秒）
+    RSS_MAX_FETCH_INTERVAL: int             # 最大抓取间隔（秒）
+    RSS_MAX_INITIAL_ENTRIES: int            # 初次获取的最大条目数
+    RSS_MAX_UPDATE_ENTRIES: int             # 后续更新的最大条目数
+    
+    # 时区设置，默认使用系统时区
+    TIMEZONE: str = os.environ.get('TZ') or (
+        'Asia/Shanghai' if platform.system() == 'Windows'
+        else next(iter(zoneinfo.available_timezones()), 'Asia/Shanghai')
+    )
+    
+    # 任务处理相关配置
+    MAX_TASK_WORKERS: int # 任务处理线程池最大并发数
+    
     model_config = ConfigDict(
         env_file=".env",
         case_sensitive=True
