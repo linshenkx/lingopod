@@ -1,1 +1,78 @@
 Generic single-database configuration.
+
+# Alembic 数据库迁移说明
+
+## 重要说明
+确保在 `db/base.py` 中正确导入了所有模型，否则 alembic 将无法发现这些表：
+```python
+from models.user import User
+from models.task import Task
+from models.rss import RSSFeed, RSSEntry
+
+__all__ = ["Base", "User", "Task", "RSSFeed", "RSSEntry"]
+```
+
+## 数据库初始化
+首次启动时，需要确保数据库正确初始化：
+
+1. 手动初始化（如果不启动服务器）：
+   ```python
+   from db.session import init_db
+   init_db()
+   ```
+
+2. 启动服务器时会自动初始化：
+   ```bash
+   uvicorn main:app
+   ```
+
+## 基本命令
+1. 生成新的迁移文件：
+   ```
+   alembic revision --autogenerate -m "描述变更内容"
+   ```
+
+2. 应用所有迁移：
+   ```
+   alembic upgrade head
+   ```
+
+3. 回滚到上一个版本：
+   ```
+   alembic downgrade -1
+   ```
+
+4. 查看当前迁移版本：
+   ```
+   alembic current
+   ```
+
+5. 查看迁移历史：
+   ```
+   alembic history
+   ```
+
+## 重新初始化步骤
+如果需要重新初始化数据库迁移：
+
+1. 删除 versions 目录下的所有迁移文件
+2. 确保 env.py 中正确导入了数据库模型：
+   ```python
+   from db.base import Base
+   target_metadata = Base.metadata
+   ```
+3. 生成新的初始迁移：
+   ```
+   alembic revision --autogenerate -m "initial"
+   ```
+4. 应用迁移：
+   ```
+   alembic upgrade head
+   ```
+
+## 注意事项
+- 每次修改数据库模型后，都需要生成新的迁移文件
+- 提交代码时需要包含 versions 目录下的迁移文件
+- 生产环境中请谨慎使用 downgrade 操作
+- 如果不启动服务器，需要手动调用 init_db() 来初始化数据库
+- 添加新模型后，记得在 db/base.py 中导入它们

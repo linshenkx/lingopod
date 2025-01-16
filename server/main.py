@@ -1,35 +1,37 @@
 import sys
 from pathlib import Path
-import logging
-
-
-
-from services.task import TaskService
-
 sys.path.append(str(Path(__file__).parent))
 
+from contextlib import asynccontextmanager
+import logging
 import threading
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-import uvicorn
-from contextlib import asynccontextmanager
-
-from api.v1 import auth, tasks, users, configs
 from core.exceptions import validation_exception_handler, general_exception_handler
 from core.config import config_manager
+from core.scheduler import setup_scheduler
 from db.session import get_db, init_db
+from services.task.task_service import TaskService
+from api.v1.api import api_router
 
-# 在文件顶部添加测试日志
+# 配置日志
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    force=True
+    format='%(asctime)s | %(levelname)s | %(name)s:%(funcName)s:%(lineno)d | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+# 创建lifespan上下文管理器
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """应用程序生命周期管理"""
+    # 启动时的操作
     init_db()
+    
+    # 确保任务目录存在
+    os.makedirs(config_manager.TASK_DIR, exist_ok=True)
     
     # 加载数据库配置
     db = next(get_db())
@@ -39,23 +41,33 @@ async def lifespan(app: FastAPI):
         
         logging.info("正在启动任务检查线程...")
         threading.Thread(
-            target=TaskService.check_incomplete_tasks(db),
+            target=TaskService.check_incomplete_tasks,
+            args=(db,),
             daemon=True
         ).start()
+        
+        # 启动RSS调度器
+        logging.info("正在启动RSS调度器...")
+        scheduler = setup_scheduler()
+        scheduler.start()
+        
+        logging.info(f"服务器已启动 - 监听地址: {config_manager.HOST}:{config_manager.PORT}")
+        yield
+        
+        # 关闭时的操作
+        logging.info("正在关闭RSS调度器...")
+        scheduler.shutdown()
+        logging.info("服务器正在关闭...")
     finally:
         db.close()
-    
-    logging.info(f"服务器已启动 - 监听地址: {config_manager.HOST}:{config_manager.PORT}")
-    yield
-    
-    logging.info("服务器正在关闭...")
 
+# 创建FastAPI应用
 app = FastAPI(
     title="LingoPod API",
-    lifespan=lifespan
+    lifespan=lifespan  # 使用lifespan上下文管理器
 )
 
-# CORS设置
+# 配置CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,20 +80,9 @@ app.add_middleware(
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
-# API路由
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
-app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
-app.include_router(configs.router, prefix="/api/v1/configs", tags=["configs"])
+# 包含API路由
+app.include_router(api_router, prefix="/api/v1")
 
-
-if __name__ == '__main__':
-    logging.info("正在启动 LingoPod API 服务器...")
-    uvicorn.run(
-        app, 
-        host=config_manager.HOST,
-        port=config_manager.PORT,
-        log_level="info",
-        access_log=True,
-        timeout_keep_alive=65
-    )
+@app.get("/")
+async def root():
+    return {"message": "Welcome to LingoPod API"}

@@ -70,14 +70,9 @@ class TaskCRUD():
         """获取任务列表"""
         query = db.query(Task)
         
-        # 权限过滤
+        # 权限过滤 - 非管理员只能看到自己的任务
         if not is_admin:
-            query = query.filter(
-                or_(
-                    Task.user_id == current_user_id,
-                    Task.is_public == True
-                )
-            )
+            query = query.filter(Task.user_id == current_user_id)
         
         # 状态过滤
         if params.status:
@@ -88,10 +83,6 @@ class TaskCRUD():
             query = query.filter(Task.created_at >= params.start_date)
         if params.end_date:
             query = query.filter(Task.created_at <= params.end_date)
-            
-        # 公开状态过滤
-        if params.is_public is not None:
-            query = query.filter(Task.is_public == params.is_public)
             
         # 用户过滤
         if params.user_id:

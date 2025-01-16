@@ -11,6 +11,8 @@ from models.enums import TaskStatus, TaskProgress
 from models.task import Task
 from schemas.task import TaskCreate, StyleParams
 from utils.time_utils import TimeUtil
+from utils.auth import get_password_hash
+from models.user import User
 
 
 def get_valid_test_url():
@@ -20,8 +22,7 @@ def get_valid_test_url():
 def get_test_task_data(url=None):
     """获取用于测试的任务数据"""
     return {
-        "url": url or get_valid_test_url(),
-        "is_public": True
+        "url": url or get_valid_test_url()
     }
 
 def test_create_task(client, test_user, override_get_db, db_session):
@@ -52,10 +53,12 @@ def test_create_task(client, test_user, override_get_db, db_session):
     data = response.json()
     
     # 验证任务创建成功
-    task = db_session.query(Task).filter(Task.taskId == data["taskId"]).first()
-    assert task is not None
-    assert task.status == TaskStatus.PROCESSING.value
-    assert task.created_by == test_user.id
+    db_session.rollback()  # 回滚之前的事务
+    with db_session.begin():  # 使用上下文管理器自动管理事务
+        task = db_session.query(Task).filter(Task.taskId == data["taskId"]).first()
+        assert task is not None
+        assert task.status == TaskStatus.PROCESSING.value
+        assert task.created_by == test_user.id
 
 def test_get_task(client, test_user, test_task):
     # 先登录获取token
@@ -519,24 +522,26 @@ def test_create_task_with_valid_url(client: TestClient, db_session: Session, tes
         }
     )
     token = login_response.json()["access_token"]
-    
+
     url = "https://mp.weixin.qq.com/s/valid-article-id"
     task_data = {
         "url": url,
         "is_public": False
     }
-    
+
     response = client.post(
         "/api/v1/tasks",
         json=task_data,
         headers={"Authorization": f"Bearer {token}"}
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["url"] == url
-    
+
     # 验证任务是否真的创建在数据库中
+    db_session.expire_all()  # 清理会话状态
+    db_session.rollback()  # 回滚之前的事务
     task = db_session.query(Task).filter(Task.url == url).first()
     assert task is not None
 
@@ -572,19 +577,20 @@ def test_create_task_with_invalid_url(client: TestClient, db_session: Session, t
             headers={"Authorization": f"Bearer {token}"}
         )
         
+        assert response.status_code == 422  # 应该返回验证错误
         error_data = response.json()
         assert isinstance(error_data, dict)
-        assert "message" in error_data
+        assert "detail" in error_data
         
         if url.startswith("https://") and "mp.weixin.qq.com" not in url:
             # URL 格式正确但不是微信链接
-            assert response.status_code == 422
-            assert "URL必须匹配模式" in error_data["message"]
-
+            assert "URL必须匹配模式" in str(error_data["detail"])
         
         # 验证没有任务被创建
-        task = db_session.query(Task).filter(Task.url == url).first()
-        assert task is None
+        db_session.rollback()  # 回滚之前的事务
+        with db_session.begin():  # 使用上下文管理器自动管理事务
+            task = db_session.query(Task).filter(Task.url == url).first()
+            assert task is None
 
 def test_create_task_with_modified_url_pattern(client: TestClient, db_session: Session, test_user, monkeypatch):
     """测试修改URL模式后的任务创建"""
@@ -597,32 +603,38 @@ def test_create_task_with_modified_url_pattern(client: TestClient, db_session: S
         }
     )
     token = login_response.json()["access_token"]
-    
+
     # 临时修改允许的URL模式
     new_pattern = r'^https://(mp\.weixin\.qq\.com|example\.com)'
     monkeypatch.setattr(settings, "ALLOWED_URL_PATTERN", new_pattern)
-    
+
     # 测试新模式允许的URL
     valid_urls = [
         "https://mp.weixin.qq.com/s/article-1",
         "https://example.com/post-1"
     ]
-    
+
     for url in valid_urls:
         task_data = {
             "url": url,
             "is_public": False
         }
-        
+
         response = client.post(
             "/api/v1/tasks",
             json=task_data,
             headers={"Authorization": f"Bearer {token}"}
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert data["url"] == url
+
+        # 验证任务是否真的创建在数据库中
+        db_session.rollback()  # 回滚之前的事务
+        with db_session.begin():  # 使用上下文管理器自动管理事务
+            task = db_session.query(Task).filter(Task.url == url).first()
+            assert task is not None
 
 def test_task_create_schema_validation():
     """测试TaskCreate模型的URL验证"""

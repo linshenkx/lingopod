@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import os
 import time
 import json
+from concurrent.futures import Future
 
 from models.task import Task
 from models.enums import TaskProgress, TaskStatus
@@ -19,11 +20,15 @@ from .utils.progress_tracker import ProgressTracker
 from .steps.base import BaseStep
 from core.logging import log
 from core.config import settings
+from core.thread_pool import ThreadPoolManager
 from services.task.steps.fetch_content import FetchContentStep
 from services.task.steps.generate_title import GenerateTitleStep
 
 class TaskProcessor:
     """任务处理器"""
+    
+    MAX_STEP_RETRIES = 1  # 单个步骤最大重试次数
+    RETRY_DELAY = 3  # 重试等待时间(秒)
     
     def __init__(self, task: Task, db: Session, is_retry: bool = False):
         self.task = task
@@ -31,6 +36,15 @@ class TaskProcessor:
         self.is_retry = is_retry
         self.temp_dir = os.path.join(settings.TASK_DIR, task.taskId)
         os.makedirs(self.temp_dir, exist_ok=True)
+        
+        # 确保任务对象是最新的且与会话关联
+        try:
+            # 重新从数据库加载任务对象
+            self.task = self.db.merge(self.task)
+            self.db.refresh(self.task)
+        except Exception as e:
+            self.db.rollback()
+            raise Exception(f"无法刷新任务对象: {str(e)}")
         
         self.context_manager = ContextManager(task, self.temp_dir)
         
@@ -40,11 +54,10 @@ class TaskProcessor:
             level_dir = os.path.join(self.temp_dir, level)
             os.makedirs(level_dir, exist_ok=True)
             self.level_dirs[level] = level_dir
-            # 将level_dir添加到上下文，使用level作为前缀
             self.context_manager.set(f"{level}_dir", level_dir)
         
         self.steps = self._create_steps_without_tracker()
-        self.progress_tracker = ProgressTracker(task, db, len(self.steps))
+        self.progress_tracker = ProgressTracker(self.task, db, len(self.steps))
         self._update_steps_tracker()
         self.start_step = self._get_start_step(is_retry)
         
@@ -54,13 +67,11 @@ class TaskProcessor:
             "progress_tracker": None,
             "context_manager": self.context_manager
         }
-        
         steps = [
             # 添加通用步骤
             FetchContentStep(**base_params),  # 确保这是第一个步骤
             GenerateTitleStep(**base_params),
         ]
-        
         # 为每个难度等级创建步骤
         for level in ["elementary", "intermediate", "advanced"]:
             level_steps = [
@@ -68,29 +79,41 @@ class TaskProcessor:
                 DialogueStep(level=level, **base_params),
                 TranslationStep(level=level, **base_params)
             ]
-            
             # 需要中英文处理的步骤类
             bilingual_steps = [
                 (AudioStep, "音频生成"),
                 (SubtitleStep, "字幕生成"), 
                 (AudioMergeStep, "音频合并")
             ]
-            
             # 添加中英文步骤
             for step_class, _ in bilingual_steps:
                 for lang in ["cn", "en"]:
                     level_steps.append(
                         step_class(level=level, lang=lang, **base_params)
                     )
-            
             steps.extend(level_steps)
-                
         return steps
 
     def _update_steps_tracker(self):
         """更新所有步骤的progress_tracker"""
         for step in self.steps:
             step.progress_tracker = self.progress_tracker
+
+    @classmethod
+    def process_task_async(cls, task: Task, db: Session, is_retry: bool = False) -> Future:
+        """异步处理任务
+        
+        Args:
+            task: Task对象
+            db: 数据库会话
+            is_retry: 是否为重试任务
+            
+        Returns:
+            Future: 用于跟踪任务执行状态的Future对象
+        """
+        processor = cls(task, db, is_retry)
+        pool = ThreadPoolManager.get_instance()
+        return pool.submit(processor.process_task)
 
     def process_task(self, timeout: int = None):
         """处理任务
@@ -116,72 +139,93 @@ class TaskProcessor:
             raise
 
     def _execute_steps(self, timeout: int = None):
-        """执行所有步骤
-        
-        Args:
-            timeout (int, optional): 任务执行超时时间(秒)
-        """
+        """执行所有步骤"""
         try:
-            # 先刷新任务对象
-            log.info(f"刷新任务对象: {self.task.taskId}")
-            self.db.refresh(self.task)
+            # 在每次重要操作前刷新任务对象
+            try:
+                # 重新从数据库加载任务对象
+                self.task = self.db.merge(self.task)
+                self.db.refresh(self.task)
+            except Exception as e:
+                self.db.rollback()
+                raise Exception(f"无法刷新任务对象: {str(e)}")
             
             # 更新总步骤数
             self.task.total_steps = len(self.steps)
-            # 更新任务状态
             self.task.status = TaskStatus.PROCESSING.value
             self.task.progress = TaskProgress.PROCESSING.value
             self.task.progress_message = "开始执行任务"
             
-            log.info(f"更新任务初始状态: taskId={self.task.taskId}, total_steps={len(self.steps)}")
-            self.db.commit()
-            
-            # 验证更新是否成功
-            self.db.refresh(self.task)
-            if self.task.total_steps != len(self.steps):
-                raise Exception(f"更新任务总步骤数失败: expected={len(self.steps)}, actual={self.task.total_steps}")
+            try:
+                self.db.commit()
+            except Exception as e:
+                self.db.rollback()
+                raise Exception(f"更新任务状态失败: {str(e)}")
             
             start_time = time.time()
-            # 执行步骤
             for i, step in enumerate(self.steps[self.start_step:], self.start_step):
                 if timeout and (time.time() - start_time) > timeout:
                     raise Exception(f"任务执行超时(超过{timeout}秒)")
-                    
-                log.info(f"开始执行步骤: taskId={self.task.taskId}, step={step.name}, index={i}")
-                self._execute_single_step(step, i)
-                log.info(f"步骤执行完成: taskId={self.task.taskId}, step={step.name}, index={i}")
+                
+                # 每个步骤开始前刷新任务对象
+                try:
+                    # 重新从数据库加载任务对象
+                    self.task = self.db.merge(self.task)
+                    self.db.refresh(self.task)
+                    self._execute_single_step(step, i)
+                except Exception as e:
+                    log.error(f"步骤执行失败: {str(e)}")
+                    raise e
                 
         except sqlalchemy.exc.InvalidRequestError as e:
-            # 任务可能已被删除，记录日志
-            log.error(f"Task refresh failed, task may have been deleted: {str(e)}")
             self.db.rollback()
             raise Exception(f"任务可能已被删除: {str(e)}")
         except Exception as e:
-            log.error(f"执行步骤失败: {str(e)}")
             self.db.rollback()
-            raise Exception(f"执行步骤失败: {str(e)}")
+            raise e
 
     def _execute_single_step(self, step: BaseStep, step_index: int):
-        """执行单个步骤"""
+        """执行单个步骤，失败时自动重试"""
         level = getattr(step, 'level', None)
         if level:
             self.context_manager.set('current_level', level)
             self.context_manager.set('level_dir', self.level_dirs[level])
             
         self.context_manager.set('current_step_index', step_index)
-        self._update_step_progress(step, step_index, 0, "开始执行")
         
-        try:
-            if self._should_execute_step(step):
-                log.info(f"步骤 {step.name} 需要执行")
-                result = step.execute()
-                self._handle_step_success(step, result, step_index)
-            else:
-                log.info(f"步骤 {step.name} 已完成，跳过执行")
-                self._load_completed_step(step, step_index)
-        except Exception as e:
-            self._handle_step_failure(step, e)
-            raise
+        retry_count = 0
+        last_error = None
+        
+        while retry_count <= self.MAX_STEP_RETRIES:
+            try:
+                self._update_step_progress(step, step_index, 0, 
+                    "开始执行" if retry_count == 0 else f"第{retry_count}次重试")
+                
+                if self._should_execute_step(step):
+                    log.info(f"步骤 {step.name} 需要执行" + 
+                            (f" (重试 {retry_count})" if retry_count > 0 else ""))
+                    result = step.execute()
+                    self._handle_step_success(step, result, step_index)
+                else:
+                    log.info(f"步骤 {step.name} 已完成，跳过执行")
+                    self._load_completed_step(step, step_index)
+                return  # 执行成功，直接返回
+                
+            except Exception as e:
+                last_error = e
+                retry_count += 1
+                
+                if retry_count <= self.MAX_STEP_RETRIES:
+                    log.warning(f"步骤 {step.name} 执行失败，{self.RETRY_DELAY}秒后进行第{retry_count}次重试。错误: {str(e)}")
+                    time.sleep(self.RETRY_DELAY)
+                    continue
+                
+                # 如果已达到最大重试次数，记录错误并重新抛出异常
+                log.error(f"步骤 {step.name} 在重试{self.MAX_STEP_RETRIES}次后仍然失败")
+                self._handle_step_failure(step, last_error)
+                
+                # 抛出特殊异常以触发整个任务的重试
+                raise TaskError(f"步骤 {step.name} 执行失败，需要重试整个任务: {str(last_error)}")
 
     def _should_execute_step(self, step: BaseStep) -> bool:
         """检查步骤是否需要执行"""
@@ -203,19 +247,6 @@ class TaskProcessor:
 
     def _handle_step_success(self, step: BaseStep, result: Dict, step_index: int):
         """处理步骤执行成功"""
-        # level = getattr(step, 'level', None)
-        # if level and result:
-        #     # 更新文件URL到task.files
-        #     if not self.task.files:
-        #         self.task.files = {}
-        #     if level not in self.task.files:
-        #         self.task.files[level] = {}
-                
-        #     lang = getattr(step, 'lang', None)
-        #     if lang and 'audio' in result:
-        #         if lang not in self.task.files[level]:
-        #             self.task.files[level][lang] = {}
-        #         self.task.files[level][lang].update(result)
         
         self.context_manager.update(result)
         self._update_step_progress(step, step_index, 100, "执行完成")
@@ -224,9 +255,15 @@ class TaskProcessor:
         """处理步骤执行失败"""
         error_msg = str(error)
         log.error(f"步骤 {step.name} 执行失败: {error_msg}")
-        self.task.current_step = step.name
-        self.progress_tracker.update_error(error_msg)
-        self.db.commit()
+        try:
+            # 重新从数据库加载任务对象
+            self.task = self.db.merge(self.task)
+            self.task.current_step = step.name
+            self.progress_tracker.update_error(error_msg)
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise
 
     def _handle_failure(self, error: Exception):
         """处理任务失败"""
@@ -239,9 +276,11 @@ class TaskProcessor:
             self.progress_tracker.update_error(error_msg)
             self.context_manager.set('status', TaskStatus.FAILED.value)
             self.context_manager.save()
+            self.db.commit()
         except (sqlalchemy.orm.exc.ObjectDeletedError, sqlalchemy.exc.InvalidRequestError) as e:
             # 任务已被删除，记录日志
             log.warning(f"Cannot update error status, task has been deleted: {task_id}")
+            self.db.rollback()
             raise  # 重新抛出异常以便上层处理
 
     def _update_step_progress(self, step: BaseStep, step_index: int, 
@@ -256,11 +295,13 @@ class TaskProcessor:
 
     def _complete_task(self):
         """完成任务"""
-        self.db.refresh(self.task)
-        self.task.status = TaskStatus.COMPLETED.value
-        self.task.progress = TaskProgress.COMPLETED.value
-        self.context_manager.save()
         try:
+            # 重新从数据库加载任务对象
+            self.task = self.db.merge(self.task)
+            self.db.refresh(self.task)
+            self.task.status = TaskStatus.COMPLETED.value
+            self.task.progress = TaskProgress.COMPLETED.value
+            self.context_manager.save()
             self.db.commit()
         except Exception as e:
             self.db.rollback()

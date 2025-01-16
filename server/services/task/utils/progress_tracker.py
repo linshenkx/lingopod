@@ -16,7 +16,16 @@ class ProgressTracker:
         self.task = task
         self.db = db
         self.total_steps = total_steps
-        self.db.add(self.task)
+        self.current_step = 0
+        try:
+            if not self.db.in_transaction():
+                self.db.begin()
+            self.db.add(self.task)
+            self.db.refresh(self.task)
+        except Exception as e:
+            if self.db.in_transaction():
+                self.db.rollback()
+            raise Exception(f"初始化进度追踪器失败: {str(e)}")
         
     def update_progress(
         self,
@@ -60,29 +69,37 @@ class ProgressTracker:
         log.info(f"Updating task {self.task.taskId} status: status={status}, progress={progress}, message={progress_message}")
         
         try:
+            if not self.db.in_transaction():
+                self.db.begin()
+                
             self.db.refresh(self.task)
-        except Exception as e:
-            log.error(f"Failed to refresh task {self.task.taskId}: {str(e)}")
-            raise
-        
-        if error_message:
-            self.task.status = TaskStatus.FAILED.value
-            self.task.progress = TaskProgress.FAILED.value
-            self.task.progress_message = error_message
-        else:
-            self.task.status = status
-            self.task.progress = progress
-            self.task.progress_message = progress_message
             
-        self.task.updatedAt = TimeUtil.now_ms()
-        self.task.current_step = current_step
-        self.task.current_step_index = current_step_index
-        self.task.step_progress = step_progress
-        
-        try:
+            if error_message:
+                self.task.status = TaskStatus.FAILED.value
+                self.task.progress = TaskProgress.FAILED.value
+                self.task.progress_message = error_message
+                self.task.error = error_message
+            else:
+                self.task.status = status
+                self.task.progress = progress
+                self.task.progress_message = progress_message
+                
+            self.task.updatedAt = TimeUtil.now_ms()
+            self.task.current_step = current_step
+            self.task.current_step_index = current_step_index
+            self.task.step_progress = step_progress
+            
             self.db.commit()
+            
+        except sqlalchemy.orm.exc.ObjectDeletedError as e:
+            if self.db.in_transaction():
+                self.db.rollback()
+            log.warning(f"Task has been deleted during update: {self.task.taskId}")
+            raise
         except Exception as e:
-            self.db.rollback()
+            if self.db.in_transaction():
+                self.db.rollback()
+            log.error(f"Failed to update task status: {str(e)}")
             raise Exception(f"更新任务状态失败: {str(e)}")
     
     def update_error(self, error_msg: str, stack_trace: Optional[str] = None):
@@ -105,9 +122,9 @@ class ProgressTracker:
         except (sqlalchemy.orm.exc.ObjectDeletedError, sqlalchemy.exc.InvalidRequestError) as e:
             # 任务已被删除，记录日志
             log.warning(f"Cannot update error status, task has been deleted: {task_id}")
+            if self.db.in_transaction():
+                self.db.rollback()
     
-
-
     def update_files(self, level: str, lang: str, file_type: str):
         """更新任务文件结构
         
@@ -117,6 +134,9 @@ class ProgressTracker:
             file_type: 文件类型(audio/subtitle)
         """
         try:
+            if not self.db.in_transaction():
+                self.db.begin()
+                
             self.db.refresh(self.task)
             
             # 确保 files 字典存在并且是可变的
@@ -146,6 +166,12 @@ class ProgressTracker:
             # 提交更改
             self.db.commit()
             
+        except sqlalchemy.orm.exc.ObjectDeletedError as e:
+            if self.db.in_transaction():
+                self.db.rollback()
+            log.warning(f"Task has been deleted during file update: {self.task.taskId}")
+            raise
         except Exception as e:
-            self.db.rollback()
+            if self.db.in_transaction():
+                self.db.rollback()
             raise Exception(f"更新任务文件结构失败: {str(e)}")

@@ -6,6 +6,7 @@ import asyncio
 import uuid
 import aiohttp
 import feedparser
+import sqlalchemy.exc
 
 from db.session import get_db, SessionLocal
 from models.user import User
@@ -81,39 +82,44 @@ async def create_feed(
                     parsed = feedparser.parse(content)
                     
             # 从RSS源获取标题
-            title = parsed.feed.get('title', feed.url)
+            title = parsed.feed.get('title', str(feed.url))
         except Exception as e:
             log.error(f"获取RSS源标题失败: {str(e)}")
-            title = feed.url  # 如果获取失败，使用URL作为标题
+            title = str(feed.url)  # 如果获取失败，使用URL字符串作为标题
     
-    # 创建新的RSS源
-    feed_data = feed.model_dump(exclude_unset=True)
-    feed_data['title'] = title
-    feed_data['user_id'] = current_user.id
-    
-    new_feed = RSSFeed(**feed_data)
-    db.add(new_feed)
-    db.commit()
-    db.refresh(new_feed)
-    
-    # 创建一个独立的后台任务来处理RSS源
-    async def background_fetch():
-        try:
-            async_db = SessionLocal()
+    try:
+        # 创建新的RSS源
+        feed_data = feed.model_dump(exclude_unset=True)
+        feed_data['title'] = title
+        feed_data['user_id'] = current_user.id
+        feed_data['url'] = str(feed.url)  # 确保 URL 被转换为字符串
+        
+        new_feed = RSSFeed(**feed_data)
+        db.add(new_feed)
+        db.commit()
+        db.refresh(new_feed)
+        
+        # 创建一个独立的后台任务来处理RSS源
+        async def background_fetch():
             try:
-                manager = FeedManager(async_db, None)
-                await manager.fetch_feed(new_feed)
+                async_db = SessionLocal()
+                try:
+                    manager = FeedManager(async_db, None)
+                    await manager.fetch_feed(new_feed)
+                except Exception as e:
+                    log.error(f"RSS源初始化抓取失败: {str(e)}")
+                finally:
+                    async_db.close()
             except Exception as e:
-                log.error(f"RSS源初始化抓取失败: {str(e)}")
-            finally:
-                async_db.close()
-        except Exception as e:
-            log.error(f"后台任务执行失败: {str(e)}")
-    
-    # 启动后台任务
-    asyncio.create_task(background_fetch())
-    
-    return new_feed
+                log.error(f"后台任务执行失败: {str(e)}")
+        
+        # 启动后台任务
+        asyncio.create_task(background_fetch())
+        
+        return new_feed
+    except sqlalchemy.exc.IntegrityError as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="该RSS源已存在")
 
 @router.put("/feeds/{feed_id}", response_model=RSSFeedResponse)
 async def update_feed(

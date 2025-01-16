@@ -624,11 +624,11 @@ def test_task_execution_failure(db_session, test_user):
     db_session.commit()
     
     # 创建处理器并执行任务
-    processor = TaskProcessor(task, db_session)
+    future = TaskProcessor.process_task_async(task, db_session)
     
     # 执行任务并捕获异常
     try:
-        processor.process_task()
+        future.result()  # 等待任务完成
     except Exception:
         pass  # 我们期望任务失败，所以忽略异常
         

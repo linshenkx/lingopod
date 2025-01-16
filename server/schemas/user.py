@@ -1,46 +1,46 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import List, Optional
+from typing import Optional, List
+from pydantic import BaseModel, EmailStr
+
 
 class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
     nickname: Optional[str] = None
+    is_active: Optional[bool] = True
+    is_admin: Optional[bool] = False
+
 
 class UserCreate(UserBase):
     password: str
 
+
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
     nickname: Optional[str] = None
-    tts_voice: Optional[str] = None
-    tts_rate: Optional[int] = None
+    email: Optional[EmailStr] = None
+
 
 class UserInDB(UserBase):
     id: int
-    is_active: bool = True
-    is_admin: bool = False
-    model_config = ConfigDict(from_attributes=True)
-
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: Optional[str] = None
-    nickname: str
-    is_active: bool
-    is_admin: bool
     created_at: int
     last_login: Optional[int] = None
-    tts_voice: str
-    tts_rate: int
-    model_config = ConfigDict(from_attributes=True)
+
+    class Config:
+        from_attributes = True
+
+
+class UserResponse(UserInDB):
+    pass
+
 
 class UserListResponse(BaseModel):
     total: int
     items: List[UserResponse]
 
+
 class UserStatusUpdate(BaseModel):
     is_active: bool
 
-class PasswordUpdate(BaseModel):
+
+class UserPasswordUpdate(BaseModel):
     old_password: str
     new_password: str

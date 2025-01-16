@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lingopod"
-version = "0.1.0"
+version = "3.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
@@ -80,10 +80,16 @@ urllib3 = "^2.2.3"
 uvicorn = "^0.32.0"
 win32-setctime = "^1.1.0"
 yarl = "^1.17.1"
+apscheduler = "^3.11.0"
+feedparser = "^6.0.11"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+]
 
 [build-system]
 requires = ["poetry-core"]

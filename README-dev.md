@@ -42,10 +42,24 @@ vim .env
 > - 生产环境建议使用系统环境变量而不是 `.env` 文件
 
 ### 4. 本地开发运行
+
+有两种方式可以启动开发服务器：
+
+1. 使用开发脚本（推荐）：
 ```bash
-# 启动开发服务器
-poetry run python server/main.py
+# 启动开发服务器（包含热重载）
+poetry run python server/run.py
 ```
+
+2. 直接使用 uvicorn：
+```bash
+# 启动开发服务器（包含热重载）
+poetry run uvicorn server.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+> 💡 **说明**:
+> - 开发模式默认启用热重载，修改代码后服务器会自动重启
+> - 生产环境不建议启用热重载
 
 ### 5. 依赖管理常用命令
 

@@ -8,9 +8,10 @@ from auth.dependencies import get_current_active_user, get_current_user
 from db.session import get_db
 from core.logging import log
 import os
-from pydantic import ValidationError
+import threading
 
 from models.enums import TaskProgress, TaskStatus
+from services.task.task_service import execute_task
 from services.file import FileService
 from services.task import TaskService
 
@@ -23,18 +24,24 @@ async def create_task(
     db: Session = Depends(get_db)
 ):
     try:
-        # 创建任务 - 使用 user 参数名
+        # 创建任务
         task = task_crud.create(db=db, obj_in=task_in, user=current_user)
+        db.commit()  # 提交事务以保存任务
         
-        # 使用新方法直接传递task对象
-        TaskService.start_processing_with_task(task, db)
+        # 启动后台任务处理
+        threading.Thread(
+            target=execute_task,
+            args=(task.taskId, False),
+            daemon=True
+        ).start()
         
         return task
     except Exception as e:
+        db.rollback()
         log.error(f"Failed to create task: error={str(e)}")
         log.error("Traceback:", exc_info=True)
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"启动任务处理失败: {str(e)}"
         )
 
@@ -50,7 +57,7 @@ async def get_task(
         raise HTTPException(status_code=404, detail="Task not found")
     
     # 检查任务权限
-    if task.user_id != current_user.id and not task.is_public:
+    if task.user_id != current_user.id and not task.is_public and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="No permission to access this task")
     
     return task
@@ -120,7 +127,7 @@ async def get_task_file(
         raise HTTPException(status_code=404, detail="Task not found")
     
     # 检查访问权限
-    if task.user_id != current_user.id and not task.is_public:
+    if task.user_id != current_user.id and not task.is_public and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="No permission to access this file")
     
     # 生成标准化的文件名

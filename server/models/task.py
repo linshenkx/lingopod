@@ -68,6 +68,7 @@ class Task(Base):
         foreign_keys=[updated_by],
         uselist=False
     )
+    rss_entries = relationship("RSSEntry", back_populates="task")
 
     @validates('url')
     def validate_url(self, key, url):

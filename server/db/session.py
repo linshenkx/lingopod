@@ -1,11 +1,15 @@
 import logging
+import os
+import configparser
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core.config import settings
+from alembic.config import Config
+from alembic import command
+
 from auth.utils import get_password_hash
+from core.config import settings
 from models.user import User
-import alembic.config
-import os
 
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{settings.DB_PATH}"
 engine = create_engine(
@@ -28,8 +32,24 @@ def init_db():
     db_dir = os.path.dirname(settings.DB_PATH)
     os.makedirs(db_dir, exist_ok=True)
     
-    # 创建初始表结构
-    Base.metadata.create_all(bind=engine)
+    # 运行数据库迁移
+    try:
+        # 获取alembic.ini的路径（相对于当前文件的上级目录）
+        alembic_cfg = Config()
+        alembic_cfg.file_config = configparser.ConfigParser()
+        alembic_cfg.file_config.read(
+            os.path.join(os.path.dirname(__file__), "..", "alembic.ini"),
+            encoding='utf-8'
+        )
+        alembic_cfg.set_main_option('script_location', os.path.join(os.path.dirname(__file__), "..", "alembic"))
+        alembic_cfg.set_main_option('sqlalchemy.url', SQLALCHEMY_DATABASE_URL)
+        command.upgrade(alembic_cfg, "head")
+        logging.info("数据库迁移完成")
+    except Exception as e:
+        logging.error(f"数据库迁移失败: {str(e)}")
+        # 如果迁移失败，回退到创建初始表结构
+        Base.metadata.create_all(bind=engine)
+        logging.info("已创建初始表结构")
     
     # 创建初始管理员用户
     db = SessionLocal()

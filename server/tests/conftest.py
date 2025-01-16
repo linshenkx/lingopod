@@ -26,13 +26,16 @@ import shutil
 import tempfile
 
 from db.base import Base
-from main import app
 from db.session import get_db
 from core.config import settings
 from models.task import Task
 from models.user import User
 from models.enums import TaskStatus, TaskProgress
 from utils.time_utils import TimeUtil
+from services.task.processor import TaskProcessor
+
+# 最后导入app
+from main import app
 
 # 使用内存数据库进行测试
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -44,15 +47,19 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def db_session():
-    Base.metadata.create_all(bind=engine)
+    """每个测试函数都使用新的数据库会话"""
+    # 创建所有表
+    Base.metadata.drop_all(bind=engine)  # 先删除所有表
+    Base.metadata.create_all(bind=engine)  # 重新创建所有表
+    
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine)  # 清理所有表
 
 @pytest.fixture
 def override_get_db(db_session):
@@ -67,7 +74,6 @@ def override_get_db(db_session):
 @pytest.fixture
 def client(db_session, override_get_db):
     """创建测试客户端，并覆盖数据库依赖"""
-    from db.session import get_db
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     app.dependency_overrides.clear()
@@ -216,3 +222,19 @@ def test_settings():
         finally:
             # 恢复原始设置
             settings.TASK_DIR = original_task_dir
+
+@pytest.fixture
+def task_processor(request, db_session):
+    """创建任务处理器fixture"""
+    processor = None
+    
+    def _create_processor(task, is_retry=False):
+        nonlocal processor
+        processor = TaskProcessor(task, db_session, is_retry)
+        return processor
+        
+    yield _create_processor
+    
+    # 清理临时文件
+    if processor and os.path.exists(processor.temp_dir):
+        shutil.rmtree(processor.temp_dir)

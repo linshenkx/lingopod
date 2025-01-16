@@ -1,9 +1,11 @@
-import pytest
-from fastapi import status
 import os
+
+from fastapi import status
+
 from core.config import settings
 from models.user import User
 from utils.time_utils import TimeUtil
+
 
 def test_delete_user_as_admin(client, test_admin, test_user, test_task):
     # 使用管理员登录
@@ -239,9 +241,7 @@ def test_update_current_user(client, test_user):
     # 更新用户信息
     update_data = {
         "nickname": "新昵称",
-        "email": "newemail@example.com",
-        "tts_voice": "zh-CN-YunxiNeural",
-        "tts_rate": 1
+        "email": "newemail@example.com"
     }
     
     response = client.patch(
@@ -254,8 +254,6 @@ def test_update_current_user(client, test_user):
     data = response.json()
     assert data["nickname"] == update_data["nickname"]
     assert data["email"] == update_data["email"]
-    assert data["tts_voice"] == update_data["tts_voice"]
-    assert data["tts_rate"] == update_data["tts_rate"]
 
 def test_update_password(client, test_user):
     """测试修改密码"""
@@ -460,3 +458,30 @@ def test_test_user_config_update(client, test_admin, db_session):
         }
     )
     assert login_response.status_code == status.HTTP_200_OK
+
+def test_update_user_me(client, test_user):
+    """测试更新当前用户信息"""
+    # 登录
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "testuser",
+            "password": "testpass"
+        }
+    )
+    token = login_response.json()["access_token"]
+    
+    # 更新用户信息
+    update_data = {
+        "nickname": "New Nickname",
+        "email": "new.email@example.com"
+    }
+    response = client.patch(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+        json=update_data
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nickname"] == update_data["nickname"]
+    assert data["email"] == update_data["email"]

@@ -1,19 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
-from sqlalchemy.orm import Session
-from models.user import User
-from models.task import Task
-from auth.dependencies import get_admin_user, get_current_active_user
-from db.session import get_db
 import os
 import shutil
-from core.config import settings
-from schemas.user import UserResponse, UserListResponse, UserStatusUpdate
-from typing import List
-from sqlalchemy import and_
-from schemas.user import UserUpdate
-from schemas.user import PasswordUpdate
-from utils.time_utils import TimeUtil
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+
+from auth.dependencies import get_admin_user, get_current_active_user
 from auth.utils import verify_password, get_password_hash
+from core.config import settings
+from db.session import get_db
+from models.task import Task
+from models.user import User
+from schemas.user import (
+    UserResponse, UserListResponse, UserStatusUpdate,
+    UserUpdate, UserPasswordUpdate
+)
 
 router = APIRouter()
 
@@ -111,29 +111,25 @@ async def update_user_status(
     return user
 
 @router.patch("/me", response_model=UserResponse)
-async def update_current_user(
+def update_user_me(
     user_update: UserUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
 ):
     """更新当前用户信息"""
-    # 更新用户信息
-    if user_update.nickname is not None:
-        current_user.nickname = user_update.nickname
     if user_update.email is not None:
         current_user.email = user_update.email
-    if user_update.tts_voice is not None:
-        current_user.tts_voice = user_update.tts_voice
-    if user_update.tts_rate is not None:
-        current_user.tts_rate = user_update.tts_rate
-        
+    if user_update.nickname is not None:
+        current_user.nickname = user_update.nickname
+    
+    db.add(current_user)
     db.commit()
     db.refresh(current_user)
     return current_user
 
 @router.post("/me/password", status_code=200)
 async def update_password(
-    password_update: PasswordUpdate,
+    password_update: UserPasswordUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):

@@ -1,7 +1,8 @@
 from sqlalchemy import Column, String, BigInteger, Integer, Boolean
 from sqlalchemy.orm import relationship
-from utils.time_utils import TimeUtil
 from db.base import Base
+from utils.time_utils import TimeUtil
+
 
 class User(Base):
     __tablename__ = "users"
@@ -15,11 +16,11 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(BigInteger, nullable=False, default=TimeUtil.now_ms)
     last_login = Column(BigInteger, nullable=True)
-    tts_voice = Column(String, default="zh-CN-XiaoxiaoNeural")
-    tts_rate = Column(Integer, default=0)
     
     tasks = relationship(
         "Task",
         back_populates="user",
         foreign_keys="[Task.user_id]"
     )
+    
+    rss_feeds = relationship("RSSFeed", back_populates="user")

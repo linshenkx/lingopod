@@ -23,7 +23,7 @@ RUN pip install poetry && poetry config virtualenvs.create false
 COPY pyproject.toml poetry.lock ./
 
 # 安装依赖
-RUN poetry install --no-dev --no-root
+RUN poetry install --only main --no-root
 
 # 最终阶段
 FROM python:3.11-slim
@@ -54,4 +54,4 @@ RUN cp .env.template .env
 EXPOSE 28811
 
 # 运行应用
-CMD ["python", "server/main.py"]
+CMD ["python", "server/run.py"]
