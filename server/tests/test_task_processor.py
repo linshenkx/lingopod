@@ -1,11 +1,9 @@
 import os
 import json
-import time
 import shutil
 from unittest.mock import patch, MagicMock
 from models.task import Task, TaskStatus, TaskProgress
 from services.task.processor import TaskProcessor
-from core.config import settings
 from services.task.steps.content import ContentStep
 from services.task.steps.fetch_content import FetchContentStep
 from services.task.steps.generate_title import GenerateTitleStep
@@ -250,7 +248,7 @@ def test_dialogue_step(db_session, test_user):
         assert f"{level}/dialogue_en.json" in result  # 改为检查英文对话文件
         
         # 验证生成的文件
-        dialogue_filename = result[f"{level}/dialogue_en.json"]  # 改为英文对话文件名
+        dialogue_filename = result[f"{level}/dialogue_en.json"]  # 改为文对话文件名
         dialogue_path = os.path.join(level_dir, dialogue_filename)
         assert os.path.exists(dialogue_path)
         
@@ -432,7 +430,7 @@ def test_task_step_retry(db_session, test_user):
     # 设置mock的返回值
     mock_audio_segment = MagicMock()
     mock_audio_segment.duration_seconds = 5.0
-    mock_audio_segment.__len__ = lambda self: 5000  # 添加这行，模拟5秒长度
+    mock_audio_segment.__len__ = lambda self: 5000
     mock_audio_segment.__add__ = lambda self, other: mock_audio_segment
     mock_audio_segment.export = MagicMock()
     mock_audio_segment.set_frame_rate = MagicMock(return_value=mock_audio_segment)
@@ -459,160 +457,36 @@ def test_task_step_retry(db_session, test_user):
     db_session.add(task)
     db_session.commit()
     
+    # 创建处理器实例
     processor = TaskProcessor(task, db_session, is_retry=True)
-    os.makedirs(processor.temp_dir, exist_ok=True)
     
-    # 为每个难度等级创建目录和文件
-    levels = ["elementary", "intermediate", "advanced"]
-    for level in levels:
-        level_dir = os.path.join(processor.temp_dir, level)
-        os.makedirs(level_dir, exist_ok=True)
-        
-        # 设置上下文
-        processor.context_manager.set("level_dir", level_dir)
-        processor.context_manager.set("current_level", level)
-        processor.context_manager.set("style_params", {  # 添加风格参数
-            "role": "host",
-            "tone": "friendly",
-            "length": "medium"
-        })
-        
-        # 创建内容文件
-        content_data = "This is test content..."
-        content_filename = "content.txt"
-        content_path = os.path.join(level_dir, content_filename)
-        with open(content_path, 'w', encoding='utf-8') as f:
-            f.write(content_data)
-            
-        processor.context_manager.set(f"{level}/content.txt", content_filename)
-            
-        # 修改对话文件创建部分
-        dialogue_en = [
-            {
-                "role": "host",
-                "content": "Let's discuss the importance of educational innovation"
-            },
-            {
-                "role": "guest", 
-                "content": "Educational innovation is indeed an important topic"
-            }
-        ]
-        dialogue_filename = "dialogue_en.json"  # 改为en
-        dialogue_path = os.path.join(level_dir, dialogue_filename)
-        with open(dialogue_path, 'w', encoding='utf-8') as f:
-            json.dump(dialogue_en, f, ensure_ascii=False, indent=2)
-            
-        # 创建中文对话文件
-        dialogue_cn = [
-            {
-                "role": "host",
-                "content": "让我们来讨论教育创新的重要性"
-            },
-            {
-                "role": "guest", 
-                "content": "教育创新确实是当今社会发展的重要议题"
-            }
-        ]
-        dialogue_cn_filename = "dialogue_cn.json"
-        dialogue_cn_path = os.path.join(level_dir, dialogue_cn_filename)
-        with open(dialogue_cn_path, 'w', encoding='utf-8') as f:
-            json.dump(dialogue_cn, f, ensure_ascii=False, indent=2)
-            
-        # 创建音频文件配置
-        audio_files_cn = [
-            {
-                "index": 0,
-                "role": "host",
-                "filename": "0000_cn_host.mp3",
-                "text": "让我们来讨论下教育创新的重要性"
-            },
-            {
-                "index": 1,
-                "role": "guest",
-                "filename": "0001_cn_guest.mp3",
-                "text": "教育创新确实是当今社会发展的重要议题"
-            }
-        ]
-        
-        audio_files_en = [
-            {
-                "index": 0,
-                "role": "host",
-                "filename": "0000_en_host.mp3",
-                "text": "Let's discuss the importance of educational innovation"
-            },
-            {
-                "index": 1,
-                "role": "guest",
-                "filename": "0001_en_guest.mp3",
-                "text": "Educational innovation is indeed an important topic"
-            }
-        ]
-        
-        # 保存音频配置文件
-        audio_config_cn_filename = "audio_files_cn.json"
-        audio_config_cn_path = os.path.join(level_dir, audio_config_cn_filename)
-        with open(audio_config_cn_path, 'w', encoding='utf-8') as f:
-            json.dump(audio_files_cn, f, ensure_ascii=False, indent=2)
-            
-        audio_config_en_filename = "audio_files_en.json"
-        audio_config_en_path = os.path.join(level_dir, audio_config_en_filename)
-        with open(audio_config_en_path, 'w', encoding='utf-8') as f:
-            json.dump(audio_files_en, f, ensure_ascii=False, indent=2)
-            
-        # 更新上下文
-        processor.context_manager.set(f"{level}/dialogue_en.json", dialogue_filename)
-        processor.context_manager.set(f"{level}/dialogue_cn.json", dialogue_cn_filename)
-        processor.context_manager.set(f"{level}/audio_files_cn.json", audio_config_cn_filename)
-        processor.context_manager.set(f"{level}/audio_files_en.json", audio_config_en_filename)
-        processor.context_manager.set(f"{level}_dir", level_dir)
-        
-        # 创建模拟的音频文件
-        for audio in audio_files_cn + audio_files_en:
-            audio_path = os.path.join(level_dir, audio["filename"])
-            with open(audio_path, 'wb') as f:
-                f.write(b'\xFF\xFB\x30\x00')  # MP3 文件头
-                for _ in range(10):
-                    f.write(b'\xFF\xFB\x30\x00' + b'\x00' * 380)
+    # 使用process_task_async
+    future = TaskProcessor.process_task_async(task, db_session, is_retry=True)
     
-    # 修改 mock 返回值以支持多个难度等级
-    with patch('services.task.steps.audio.AudioStep._generate_audio_with_retry') as mock_generate_audio, \
-         patch('services.task.steps.audio.EdgeTTSService', return_value=MagicMock()), \
-         patch('services.task.steps.audio.AudioSegment.from_mp3', return_value=mock_audio_segment), \
-         patch('services.task.steps.audio.AudioSegment.from_file', return_value=mock_audio_segment), \
-         patch('services.task.steps.dialogue.DialogueStep._execute') as mock_dialogue, \
-         patch('services.task.steps.translation.TranslationStep._execute') as mock_translate, \
-         patch('services.task.steps.audio.AudioStep._verify_audio_file', return_value=True) as mock_verify_audio:
+    try:
+        future.result()  # 等待任务完成
         
-        # 在测试函数中更新mock的side_effect
-        mock_dialogue.side_effect = mock_dialogue_execute
-        mock_translate.side_effect = mock_translate_execute
-        mock_generate_audio.return_value = True
+        # 验证任务状态
+        db_session.refresh(task)
+        assert task.status == TaskStatus.COMPLETED.value
+        assert task.progress == TaskProgress.COMPLETED.value
+        levels = ["elementary", "intermediate", "advanced"]
+        # 验证生成的文件
+        for level in levels:
+            level_dir = os.path.join(processor.temp_dir, level)
+            assert os.path.exists(os.path.join(level_dir, "content.txt"))
+            assert os.path.exists(os.path.join(level_dir, "dialogue_en.json"))
+            assert os.path.exists(os.path.join(level_dir, "dialogue_cn.json"))
         
-        try:
-            processor.process_task()
-            
-            # 验证任务状态
-            db_session.refresh(task)
-            assert task.status == TaskStatus.COMPLETED.value  # 确保任务完成
-            assert task.progress == TaskProgress.COMPLETED.value
-            
-            # 验证生成的文件
-            for level in levels:
-                level_dir = os.path.join(processor.temp_dir, level)
-                assert os.path.exists(os.path.join(level_dir, "content.txt"))
-                assert os.path.exists(os.path.join(level_dir, "dialogue_en.json"))
-                assert os.path.exists(os.path.join(level_dir, "dialogue_cn.json"))
-            
-        finally:
-            if os.path.exists(processor.temp_dir):
-                shutil.rmtree(processor.temp_dir)
+    finally:
+        if os.path.exists(processor.temp_dir):
+            shutil.rmtree(processor.temp_dir)
+
 def test_task_execution_failure(db_session, test_user):
     """测试任务执行失败场景"""
-    # 创建测试任务
     task = Task(
         taskId="test-failure-task",
-        url="https://invalid-url.com",  # 使用合法但无效的URL
+        url="https://invalid-url.com",
         status=TaskStatus.PROCESSING.value,
         progress=TaskProgress.WAITING.value,
         user_id=test_user.id,
@@ -623,10 +497,12 @@ def test_task_execution_failure(db_session, test_user):
     db_session.add(task)
     db_session.commit()
     
+    # 创建处理器实例
+    processor = TaskProcessor(task, db_session)
+    
     # 创建处理器并执行任务
     future = TaskProcessor.process_task_async(task, db_session)
     
-    # 执行任务并捕获异常
     try:
         future.result()  # 等待任务完成
     except Exception:
