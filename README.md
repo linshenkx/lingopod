@@ -72,22 +72,40 @@
   - 可继续使用在线版客户端
 
 
-## 🎯 项目架构
+## 🏗️ 技术架构
 
-本项目包含以下组件：
+本项目采用前后端分离架构，包含以下核心组件：
 
-- **API 服务端**：[lingopod](https://github.com/linshenkx/lingopod) - 提供核心 RESTful API
-- **客户端应用**：[lingopod-client](https://github.com/linshenkx/lingopod-client) - 支持 Android/Web/Windows
-- **管理后台**：[lingopod-manager](https://github.com/linshenkx/lingopod-manager) - 任务和系统管理
-- **官网**：[lingopod-web](https://github.com/linshenkx/lingopod-web)
+- **API 服务端** ([lingopod](https://github.com/linshenkx/lingopod))
+  - Python + FastAPI 构建 RESTful API
+  - LangChain 内容处理与转换
+  - Edge-TTS/OpenAI TTS 语音合成
+  - FFmpeg 音频处理
+  - 负责内容转换、播客生成、用户管理等核心功能
+
+- **客户端应用** ([lingopod-client](https://github.com/linshenkx/lingopod-client))
+  - Flutter 跨平台开发
+  - Provider 状态管理
+  - Just Audio 音频引擎
+  - 支持 Android/Windows/Web
+  - 负责播客播放、任务管理、RSS订阅等用户交互
+
+- **管理后台** ([lingopod-manager](https://github.com/linshenkx/lingopod-manager))
+  - React + TypeScript
+  - Redux 状态管理
+  - Ant Design + Material UI
+  - 负责用户管理、任务监控、系统配置等运维功能
 
 ## 📱 客户端下载
 
 您可以通过以下方式获取客户端：
 
-- **Android APK**: [点击下载](https://ghproxy.always200.com/https://github.com/linshenkx/lingopod-client/releases/latest/download/lingopod-android.apk)
-- **Windows 客户端**: [点击下载](https://github.com/linshenkx/lingopod-client/releases/latest/download/lingopod-windows.zip)
-- **Web 版本**: [点击下载](https://github.com/linshenkx/lingopod-client/releases/latest/download/lingopod-web.zip)
+- **Android APK**: [点击下载](https://ghproxy.always200.com/https://github.com/linshenkx/
+lingopod-client/releases/latest/download/lingopod-android.apk)
+- **Windows 客户端**: [点击下载](https://github.com/linshenkx/lingopod-client/releases/latest/
+download/lingopod-windows.zip)
+- **Web 版本**: [点击下载](https://github.com/linshenkx/lingopod-client/releases/latest/download/
+lingopod-web.zip)
 
 > 更多版本及历史更新请访问 [releases 页面](https://github.com/linshenkx/lingopod-client/releases)
 
@@ -99,11 +117,13 @@
   1. 微软 TTS（edge-tts）：默认模式，免费使用。非大陆地区需设置 HTTPS_PROXY 环境变量
   2. OpenAI TTS：通过设置 USE_OPENAI_TTS_MODEL=true 启用，需配置相应的 API
 
-> 推荐参考 [edge-tts-openai-cf-worker](https://github.com/linshenkx/edge-tts-openai-cf-worker) 部署基于 Cloudflare Workers 的免费 Edge OpenAI TTS 服务
+> 推荐参考 [edge-tts-openai-cf-worker](https://github.com/linshenkx/edge-tts-openai-cf-worker) 部署
+基于 Cloudflare Workers 的免费 Edge OpenAI TTS 服务
 
 ## 🚀 快速开始
 
-配置可通过 `.env` 文件或环境变量设置。详细配置说明请参考 [.env.template](https://github.com/linshenkx/lingopod/main/.env.template)。
+配置可通过 `.env` 文件或环境变量设置。详细配置说明请参考 [.env.template](https://github.com/linshenkx/
+lingopod/main/.env.template)。
 
 ### 核心服务部署
 
@@ -141,6 +161,23 @@
    ```
 
 即可得到 API 基础地址：http://localhost:28811
+
+## 📈 开发规划
+
+1. 智能学习系统
+   - 结合记忆曲线优化生词出现频率
+   - 提供个性化学习建议
+   - 完善生词本功能
+
+2. 多端协同
+   - 开发浏览器插件
+   - 开发笔记软件插件
+   - 打造无缝学习体验
+
+3. 性能优化
+   - 优化音频缓存策略
+   - 提升内容转换速度
+   - 改进数据同步机制
 
 ## 📖 文档
 
